@@ -32,3 +32,32 @@ Configuration file
 ------------------
 
 see [example.yaml](example.yaml)
+
+
+Example
+-------
+
+Config file:
+```
+queries:
+  - metric: azure_resourcestype_count
+    query: |-
+      Resources
+      | summarize count() by type
+    valueColumn: count_
+```
+
+Metrics:
+```
+# HELP azure_resourcestype_count azure_resourcestype_count
+# TYPE azure_resourcestype_count gauge
+azure_resourcestype_count{type="microsoft.compute/virtualmachinescalesets"} 2
+azure_resourcestype_count{type="microsoft.containerservice/managedclusters"} 1
+azure_resourcestype_count{type="microsoft.keyvault/vaults"} 2
+azure_resourcestype_count{type="microsoft.managedidentity/userassignedidentities"} 2
+azure_resourcestype_count{type="microsoft.network/networksecuritygroups"} 1
+azure_resourcestype_count{type="microsoft.network/networkwatchers"} 2
+azure_resourcestype_count{type="microsoft.network/routetables"} 3
+azure_resourcestype_count{type="microsoft.network/virtualnetworks"} 2
+azure_resourcestype_count{type="microsoft.storage/storageaccounts"} 1
+```
