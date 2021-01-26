@@ -37,10 +37,6 @@ func (sm *SingleOrMultiString) UnmarshalYAML(unmarshal func(interface{}) error) 
 		}
 		sm.Values = make([]string, 1)
 		sm.Values[0] = single
-
-		if single == "*" {
-
-		}
 	} else {
 		sm.Values = multi
 	}
