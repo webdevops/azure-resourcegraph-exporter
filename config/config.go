@@ -12,13 +12,50 @@ type (
 	}
 
 	ConfigQuery struct {
-		Module        string    `yaml:"module"`
-		Metric        string    `yaml:"metric"`
-		Query         string    `yaml:"query"`
-		Subscriptions *[]string `yaml:"subscriptions"`
-		ValueColumn   string    `yaml:"valueColumn"`
+		Module        string              `yaml:"module"`
+		Metric        string              `yaml:"metric"`
+		Query         string              `yaml:"query"`
+		Subscriptions *[]string           `yaml:"subscriptions"`
+		IdField       string              `yaml:"idField"`
+		ValueField    string              `yaml:"valueField"`
+		AutoExpand    SingleOrMultiString `yaml:"autoExpand"`
+	}
+
+	SingleOrMultiString struct {
+		Values []string
 	}
 )
+
+func (sm *SingleOrMultiString) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var multi []string
+	err := unmarshal(&multi)
+	if err != nil {
+		var single string
+		err := unmarshal(&single)
+		if err != nil {
+			return err
+		}
+		sm.Values = make([]string, 1)
+		sm.Values[0] = single
+
+		if single == "*" {
+
+		}
+	} else {
+		sm.Values = multi
+	}
+	return nil
+}
+
+func (c *ConfigQuery) IsAutoExpandColumn(propertyName string) bool {
+	for _, name := range c.AutoExpand.Values {
+		if name == "*" || name == propertyName {
+			return true
+		}
+	}
+
+	return false
+}
 
 func NewConfig(path string) (config Config) {
 	var filecontent []byte

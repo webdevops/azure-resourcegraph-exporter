@@ -1,14 +1,24 @@
 queries:
+    # name of metric
   - metric: azure_resources_top
+    # Azure ResourceGraph query
     query: |-
       Resources
       | top 5 by name desc
+    # Name of field which should be used for autoexpand metrics
+    idField: id
+    # only expand tags field into "azure_resources_top_tags" metric
+    # use "*" to allow every field
+    autoExpand:
+      - tags
 
   - metric: azure_resourcestype_count
     query: |-
       Resources
       | summarize count() by type
-    valueColumn: count_
+    # use count_ as metrics value
+    valueField: count_
+    idField: id
 
   - metric: azure_resourcestype
     query: |-
