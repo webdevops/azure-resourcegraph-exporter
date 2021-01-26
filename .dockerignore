@@ -1,0 +1,4 @@
+/Dockerfile
+/vendor/
+/azure-resourcegraph-exporter
+/example

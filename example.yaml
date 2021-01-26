@@ -1,0 +1,17 @@
+queries:
+  - metric: azure_resources_top
+    query: |-
+      Resources
+      | top 5 by name desc
+
+  - metric: azure_resourcestype_count
+    query: |-
+      Resources
+      | summarize count() by type
+    valueColumn: count_
+
+  - metric: azure_resourcestype
+    query: |-
+      Resources
+      | project type, tags
+    valueColumn: count_
