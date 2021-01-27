@@ -37,7 +37,8 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	metricList.Init()
 
 	for _, queryConfig := range Config.Queries {
-		if queryConfig.Module != "" && queryConfig.Module != moduleName {
+		// check if query matches module name
+		if queryConfig.Module != moduleName {
 			continue
 		}
 
