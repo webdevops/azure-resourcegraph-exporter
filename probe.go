@@ -112,6 +112,7 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 	idLabel := ""
 	idValue := ""
 
+	// main metric
 	for fieldName, rowValue := range row {
 		fieldConfig := config.ConfigQueryMetricField{}
 		if v, ok := fieldConfigMap[fieldName]; ok {
@@ -177,7 +178,21 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 			} else {
 				metric.labels[labelName] = fieldValue
 			}
-		case map[string]interface{}:
+		}
+	}
+
+	// sub metrics
+	for fieldName, rowValue := range row {
+		if v, ok := rowValue.(map[string]interface{}); ok {
+			fieldConfig := config.ConfigQueryMetricField{}
+			if v, ok := fieldConfigMap[fieldName]; ok {
+				fieldConfig = v
+			}
+
+			if fieldConfig.IsIgnore() {
+				continue
+			}
+
 			if metricConfig.IsExpand(fieldName) {
 				subMetricConfig := config.ConfigQueryMetric{
 					Metric: fmt.Sprintf("%s_%s", metricConfig.Metric, fieldName),
@@ -187,7 +202,7 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 					subMetricConfig = *fieldConfig.Expand
 				}
 
-				subMetricList := buildPrometheusMetricList(subMetricConfig, rowValue.(map[string]interface{}))
+				subMetricList := buildPrometheusMetricList(subMetricConfig, v)
 
 				for subMetricName, subMetricList := range subMetricList {
 					if _, ok := list[subMetricName]; !ok {
@@ -202,8 +217,9 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 					}
 				}
 			}
+
 		}
-	}
+	 }
 
 	if _, ok := list[metricConfig.Metric]; !ok {
 		list[metricConfig.Metric] = []MetricRow{}
