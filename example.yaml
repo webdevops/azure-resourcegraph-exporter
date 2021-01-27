@@ -6,7 +6,7 @@ queries:
     # Azure ResourceGraph query
     query: |-
       Resources
-      | top 5 by name desc
+      | top 50 by name desc
 
     ## automatically parse sub sturctures to metrics
     ## if no special field config is used the
@@ -80,6 +80,11 @@ queries:
     query: |-
       Resources
       | project type, tags
+    ## only use following subscriptions
+    subscriptions:
+      - axxxx-xxxxx-xxxxxx-xxxxx
+      - bxxxx-xxxxx-xxxxxx-xxxxx
+      - cxxxx-xxxxx-xxxxxx-xxxxx
     fields:
       ## use count_ as metrics value
       ## hint: result field  must be int or float
