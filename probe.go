@@ -219,7 +219,7 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 			}
 
 		}
-	 }
+	}
 
 	if _, ok := list[metricConfig.Metric]; !ok {
 		list[metricConfig.Metric] = []MetricRow{}

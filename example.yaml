@@ -35,11 +35,19 @@ queries:
         ## available filters: toLower, toUpper, toTitle
         filters: [toLower]
 
+        ## example for regexp manipulation
+        ## replace microsoft with foobar
+      - name: type
+        filters:
+          - type: regexp
+            regexp: "microsoft(.*)"
+            replacement: "foobar$1"
+
       - name: enableRbacAuthorization
         type: ignore
 
       ## expand tags into own metric
-      - tags: tags
+      - name: tags
         expand:
           metric: azure_resources_tags
 

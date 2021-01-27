@@ -103,6 +103,10 @@ func initArgparser() {
 
 func readConfig() {
 	Config = config.NewConfig(opts.Config.Path)
+
+	if err := Config.Validate(); err != nil {
+		log.Panic(err)
+	}
 }
 
 // Init and build Azure authorzier
