@@ -1,9 +1,11 @@
 package config
 
 import (
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"strings"
 )
 
 type (
@@ -12,19 +14,112 @@ type (
 	}
 
 	ConfigQuery struct {
-		Module        string              `yaml:"module"`
-		Metric        string              `yaml:"metric"`
-		Query         string              `yaml:"query"`
-		Subscriptions *[]string           `yaml:"subscriptions"`
-		IdField       string              `yaml:"idField"`
-		ValueField    string              `yaml:"valueField"`
-		AutoExpand    SingleOrMultiString `yaml:"autoExpand"`
+		MetricConfig  ConfigQueryMetric `yaml:",inline"`
+		Module        string            `yaml:"module"`
+		Query         string            `yaml:"query"`
+		Subscriptions *[]string         `yaml:"subscriptions"`
+	}
+
+	ConfigQueryMetric struct {
+		Metric     string                   `yaml:"metric"`
+		Value      *float64                 `yaml:"value"`
+		AutoExpand bool                     `yaml:"autoExpand"`
+		Fields     []ConfigQueryMetricField `yaml:"fields"`
+	}
+
+	ConfigQueryMetricField struct {
+		Name    string             `yaml:"name"`
+		Target  string             `yaml:"target"`
+		Type    string             `yaml:"type"`
+		Filters []string           `yaml:"filters"`
+		Expand  *ConfigQueryMetric `yaml:"metric"`
 	}
 
 	SingleOrMultiString struct {
 		Values []string
 	}
 )
+
+func (m *ConfigQueryMetric) IsExpand(field string) bool {
+	if m.AutoExpand {
+		return true
+	}
+
+	for _, fieldConfig := range m.Fields {
+		if fieldConfig.Name == field {
+			if fieldConfig.Type == "expand" || fieldConfig.Expand != nil {
+				return true
+			}
+			break
+		}
+	}
+
+	return false
+}
+
+func (m *ConfigQueryMetric) GetFieldConfigMap() (list map[string]ConfigQueryMetricField) {
+	list = map[string]ConfigQueryMetricField{}
+
+	for _, field := range m.Fields {
+		list[field.Name] = field
+	}
+
+	return
+}
+
+func (f *ConfigQueryMetricField) IsIgnore() bool {
+	return f.Type == "ignore"
+}
+
+func (f *ConfigQueryMetricField) IsId() bool {
+	return f.Type == "id"
+}
+
+func (f *ConfigQueryMetricField) IsValue() bool {
+	return f.Type == "value"
+}
+
+func (f *ConfigQueryMetricField) GetTargetFieldName(sourceName string) (ret string) {
+	ret = sourceName
+	if f.Target != "" {
+		ret = f.Target
+	} else if f.Name != "" {
+		ret = f.Name
+	}
+	return
+}
+
+func (f *ConfigQueryMetricField) TransformString(value string) (ret string) {
+	ret = value
+
+	for _, filter := range f.Filters {
+		switch strings.ToLower(filter) {
+		case "tolower":
+			ret = strings.ToLower(ret)
+		case "toupper":
+			ret = strings.ToUpper(ret)
+		case "totitle":
+			ret = strings.ToTitle(ret)
+		}
+	}
+	return
+}
+
+func (f *ConfigQueryMetricField) TransformFloat64(value float64) (ret string) {
+	ret = fmt.Sprintf("%v", value)
+	ret = f.TransformString(ret)
+	return
+}
+
+func (f *ConfigQueryMetricField) TransformBool(value bool) (ret string) {
+	if value {
+		ret = "true"
+	} else {
+		ret = "false"
+	}
+	ret = f.TransformString(ret)
+	return
+}
 
 func (sm *SingleOrMultiString) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var multi []string
@@ -41,16 +136,6 @@ func (sm *SingleOrMultiString) UnmarshalYAML(unmarshal func(interface{}) error) 
 		sm.Values = multi
 	}
 	return nil
-}
-
-func (c *ConfigQuery) IsAutoExpandColumn(propertyName string) bool {
-	for _, name := range c.AutoExpand.Values {
-		if name == "*" || name == propertyName {
-			return true
-		}
-	}
-
-	return false
 }
 
 func NewConfig(path string) (config Config) {

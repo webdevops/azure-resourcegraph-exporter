@@ -11,13 +11,11 @@ import (
 	"net/http"
 )
 
-const (
-	RESOURCEGRAPH_FIELD_ID    = "id"
-	RESOURCEGRAPH_FIELD_VALUE = "count_"
-)
-
 func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
+
+	params := r.URL.Query()
+	moduleName := params.Get("module")
 
 	ctx := context.Background()
 
@@ -38,23 +36,19 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	metricList := MetricList{}
 	metricList.Init()
 
-	for _, config := range Config.Queries {
-		if config.IdField == "" {
-			config.IdField = RESOURCEGRAPH_FIELD_ID
+	for _, queryConfig := range Config.Queries {
+		if queryConfig.Module != "" && queryConfig.Module != moduleName {
+			continue
 		}
 
-		if config.ValueField == "" {
-			config.ValueField = RESOURCEGRAPH_FIELD_VALUE
-		}
-
-		if config.Subscriptions == nil {
-			config.Subscriptions = &defaultSubscriptions
+		if queryConfig.Subscriptions == nil {
+			queryConfig.Subscriptions = &defaultSubscriptions
 		}
 
 		// Create the query request
 		Request := resourcegraph.QueryRequest{
-			Subscriptions: config.Subscriptions,
-			Query:         &config.Query,
+			Subscriptions: queryConfig.Subscriptions,
+			Query:         &queryConfig.Query,
 			Options:       &RequestOptions,
 		}
 
@@ -64,8 +58,8 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			if resultList, ok := results.Data.([]interface{}); ok {
 				for _, v := range resultList {
 					if resultRow, ok := v.(map[string]interface{}); ok {
-						for metricName, metric := range buildPrometheusMetricList(config, resultRow) {
-							metricList.Add(metricName, metric)
+						for metricName, metric := range buildPrometheusMetricList(queryConfig.MetricConfig, resultRow) {
+							metricList.Add(metricName, metric...)
 						}
 					}
 				}
@@ -100,102 +94,120 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	h.ServeHTTP(w, r)
 }
 
-func buildPrometheusMetricList(queryConfig config.ConfigQuery, row map[string]interface{}) map[string]MetricRow {
-	metricList := map[string]MetricRow{}
+func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[string]interface{}) (list map[string][]MetricRow) {
+	list = map[string][]MetricRow{}
 
-	mainMetric := MetricRow{
+	fieldConfigMap := metricConfig.GetFieldConfigMap()
+
+	metric := MetricRow{
 		labels: prometheus.Labels{},
 		value:  1,
 	}
 
-	idLabel := ""
+	if metricConfig.Value != nil {
+		metric.value = *metricConfig.Value
+	}
 
-	for labelName, rowValue := range row {
+	idLabel := ""
+	idValue := ""
+
+	for fieldName, rowValue := range row {
+		fieldConfig := config.ConfigQueryMetricField{}
+		if v, ok := fieldConfigMap[fieldName]; ok {
+			fieldConfig = v
+		}
+
+		labelName := fieldConfig.GetTargetFieldName(fieldName)
+
+		if fieldConfig.IsIgnore() {
+			continue
+		}
+
 		switch v := rowValue.(type) {
 		case string:
-			if queryConfig.IdField == labelName {
-				idLabel = v
+			fieldValue := fieldConfig.TransformString(v)
+
+			if fieldConfig.IsId() {
+				idLabel = labelName
+				idValue = metric.labels[labelName]
 			}
 
-			mainMetric.labels[labelName] = v
+			metric.labels[labelName] = fieldValue
 		case int64:
-			if queryConfig.IdField == labelName {
-				idLabel = fmt.Sprintf("%v", v)
+			fieldValue := fieldConfig.TransformFloat64(float64(v))
+
+			if fieldConfig.IsValue() {
+				idLabel = labelName
+				idValue = fieldValue
 			}
 
-			if labelName == queryConfig.ValueField {
-				mainMetric.value = float64(v)
+			if fieldConfig.IsValue() {
+				metric.value = float64(v)
 			} else {
-				mainMetric.labels[labelName] = fmt.Sprintf("%v", v)
+				metric.labels[labelName] = fieldValue
 			}
 		case float64:
-			if queryConfig.IdField == labelName {
-				idLabel = fmt.Sprintf("%v", v)
+			fieldValue := fieldConfig.TransformFloat64(v)
+
+			if fieldConfig.IsValue() {
+				idLabel = labelName
+				idValue = fieldValue
 			}
 
-			if labelName == queryConfig.ValueField {
-				mainMetric.value = v
+			if fieldConfig.IsValue() {
+				metric.value = v
 			} else {
-				mainMetric.labels[labelName] = fmt.Sprintf("%v", v)
+				metric.labels[labelName] = fieldValue
 			}
 		case bool:
-			if v {
-				mainMetric.labels[labelName] = "true"
+			fieldValue := fieldConfig.TransformBool(v)
+
+			if fieldConfig.IsId() {
+				idLabel = labelName
+				idValue = fieldValue
+			}
+
+			if fieldConfig.IsValue() {
+				if v {
+					metric.value = 1
+				} else {
+					metric.value = 0
+				}
 			} else {
-				mainMetric.labels[labelName] = "false"
+				metric.labels[labelName] = fieldValue
 			}
 		case map[string]interface{}:
-
-		}
-	}
-
-	for labelName, rowValue := range row {
-		if _, ok := rowValue.(map[string]interface{}); ok {
-			if queryConfig.IsAutoExpandColumn(labelName) {
-				subLabelName := fmt.Sprintf("%s_%s", queryConfig.Metric, labelName)
-
-				subMetric := MetricRow{
-					labels: prometheus.Labels{
-						queryConfig.IdField: idLabel,
-					},
-					value: 1,
+			if metricConfig.IsExpand(fieldName) {
+				subMetricConfig := config.ConfigQueryMetric{
+					Metric: fmt.Sprintf("%s_%s", metricConfig.Metric, fieldName),
 				}
 
-				if idLabel != "" {
-					subMetric.labels[queryConfig.IdField] = idLabel
+				if fieldConfig.Expand != nil {
+					subMetricConfig = *fieldConfig.Expand
 				}
 
-				for subRowKey, subRowValue := range rowValue.(map[string]interface{}) {
-					switch v := subRowValue.(type) {
-					case string:
-						subMetric.labels[subRowKey] = v
-					case int64:
-						if labelName == queryConfig.ValueField {
-							subMetric.value = float64(v)
-						} else {
-							subMetric.labels[labelName] = fmt.Sprintf("%v", v)
+				subMetricList := buildPrometheusMetricList(subMetricConfig, rowValue.(map[string]interface{}))
+
+				for subMetricName, subMetricList := range subMetricList {
+					if _, ok := list[subMetricName]; !ok {
+						list[subMetricName] = []MetricRow{}
+					}
+
+					for _, subMetricRow := range subMetricList {
+						if idLabel != "" && idValue != "" {
+							subMetricRow.labels[idLabel] = idValue
 						}
-					case float64:
-						if labelName == queryConfig.ValueField {
-							subMetric.value = v
-						} else {
-							subMetric.labels[labelName] = fmt.Sprintf("%v", v)
-						}
-					case bool:
-						if v {
-							subMetric.labels[subRowKey] = "true"
-						} else {
-							subMetric.labels[subRowKey] = "false"
-						}
+						list[subMetricName] = append(list[subMetricName], subMetricRow)
 					}
 				}
-
-				metricList[subLabelName] = subMetric
 			}
 		}
 	}
 
-	metricList[queryConfig.Metric] = mainMetric
+	if _, ok := list[metricConfig.Metric]; !ok {
+		list[metricConfig.Metric] = []MetricRow{}
+	}
+	list[metricConfig.Metric] = append(list[metricConfig.Metric], metric)
 
-	return metricList
+	return
 }

@@ -17,12 +17,12 @@ func (l *MetricList) Init() {
 	l.list = map[string][]MetricRow{}
 }
 
-func (l *MetricList) Add(name string, metric MetricRow) {
+func (l *MetricList) Add(name string, metric ...MetricRow) {
 	if _, ok := l.list[name]; !ok {
 		l.list[name] = []MetricRow{}
 	}
 
-	l.list[name] = append(l.list[name], metric)
+	l.list[name] = append(l.list[name], metric...)
 }
 
 func (l *MetricList) GetMetricNames() []string {

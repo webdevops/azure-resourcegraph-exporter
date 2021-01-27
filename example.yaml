@@ -1,27 +1,81 @@
 queries:
+
     # name of metric
-  - metric: azure_resources_top
+  - metric: azure_resources
+
     # Azure ResourceGraph query
     query: |-
       Resources
       | top 5 by name desc
-    # Name of field which should be used for autoexpand metrics
-    idField: id
-    # only expand tags field into "azure_resources_top_tags" metric
-    # use "*" to allow every field
-    autoExpand:
-      - tags
+
+    ## automatically parse sub sturctures to metrics
+    ## if no special field config is used the
+    ## target metric name will be:
+    ##   {metricname}_{field}
+    ## this setting is NOT recursive
+    autoExpand: true
+
+    ## default value for metric
+    ## eg for static metrics like informational metrics
+    value: 1
+
+    fields:
+        ## name of the field from the result
+      - name: id
+        ## target name for metric label
+        target: resourceId
+        ## type of field
+        ##   id: use as identification (added to sub metrics)
+        ##   value: value of metric
+        ##   expand: parse value as sub json structure and create sub metric
+        ##   ignore: do not add this field
+        type: id
+
+        ## apply filter to value
+        ## available filters: toLower, toUpper, toTitle
+        filters: [toLower]
+
+      - name: enableRbacAuthorization
+        type: ignore
+
+      ## expand tags into own metric
+      - tags: tags
+        expand:
+          metric: azure_resources_tags
+
+      ## expand properties
+      - name: properties
+        expand:
+          metric: azure_resources_props
+          ## also expand field values inside properties
+          autoExpand: true
+          fields:
+            ## ignore this field
+            - name: enableRbacAuthorization
+              type: ignore
 
   - metric: azure_resourcestype_count
+    ## only responds to /probe?module=summary
+    module: summary
     query: |-
       Resources
       | summarize count() by type
-    # use count_ as metrics value
-    valueField: count_
-    idField: id
+    fields:
+      - name: id
+        type: id
+      ## use count_ as metrics value
+      ## hint: result field  must be int or float
+      - name: count_
+        type: value
 
   - metric: azure_resourcestype
+    ## only responds to /probe?module=summary
+    module: summary
     query: |-
       Resources
       | project type, tags
-    valueColumn: count_
+    fields:
+      ## use count_ as metrics value
+      ## hint: result field  must be int or float
+      - name: count_
+        type: value
