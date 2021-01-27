@@ -61,8 +61,6 @@ queries:
       Resources
       | summarize count() by type
     fields:
-      - name: id
-        type: id
       ## use count_ as metrics value
       ## hint: result field  must be int or float
       - name: count_

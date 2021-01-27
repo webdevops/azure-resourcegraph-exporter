@@ -44,7 +44,10 @@ queries:
     query: |-
       Resources
       | summarize count() by type
-    valueColumn: count_
+    fields:
+      - name: count_
+        type: value
+
 ```
 
 Metrics:
