@@ -4,6 +4,7 @@ import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	prometheusQueryTime *prometheus.SummaryVec
+	prometheusRatelimit *prometheus.GaugeVec
 )
 
 func initGlobalMetrics() {
@@ -18,4 +19,13 @@ func initGlobalMetrics() {
 		},
 	)
 	prometheus.MustRegister(prometheusQueryTime)
+
+	prometheusRatelimit = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "azure_resourcegraph_ratelimit",
+			Help: "Azure ResourceGraph ratelimit",
+		},
+		[]string{},
+	)
+	prometheus.MustRegister(prometheusRatelimit)
 }

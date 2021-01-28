@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -17,7 +19,6 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 	params := r.URL.Query()
 	moduleName := params.Get("module")
-
 
 	probeLogger := log.WithField("module", moduleName)
 
@@ -29,8 +30,9 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create and authorize a ResourceGraph client
-	argClient := resourcegraph.NewWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
-	argClient.Authorizer = AzureAuthorizer
+	resourcegraphClient := resourcegraph.NewWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
+	resourcegraphClient.Authorizer = AzureAuthorizer
+	resourcegraphClient.ResponseInspector = respondDecorator()
 
 	// Set options
 	RequestOptions := resourcegraph.QueryRequestOptions{
@@ -62,7 +64,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Run the query and get the results
-		var results, queryErr = argClient.Resources(ctx, Request)
+		var results, queryErr = resourcegraphClient.Resources(ctx, Request)
 		if queryErr == nil {
 			contextLogger.Debug("parsing result")
 
@@ -108,6 +110,18 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
+}
+
+func respondDecorator() autorest.RespondDecorator {
+	return func(p autorest.Responder) autorest.Responder {
+		return autorest.ResponderFunc(func(r *http.Response) error {
+			ratelimit := r.Header.Get("x-ms-user-quota-remaining")
+			if v, err := strconv.ParseInt(ratelimit, 10, 64); err == nil {
+				prometheusRatelimit.WithLabelValues().Set(float64(v))
+			}
+			return nil
+		})
+	}
 }
 
 func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[string]interface{}) (list map[string][]MetricRow) {
