@@ -1,11 +1,11 @@
-Azure ResourceGraph expoter
-===========================
+Azure ResourceGraph exporter
+============================
 
 [![license](https://img.shields.io/github/license/webdevops/azure-resourcegraph-exporter.svg)](https://github.com/webdevops/azure-resourcegraph-exporter/blob/master/LICENSE)
 [![DockerHub](https://img.shields.io/badge/DockerHub-webdevops%2Fazure--resourcegraph--exporter-blue)](https://hub.docker.com/r/webdevops/azure-resourcegraph-exporter/)
 [![Quay.io](https://img.shields.io/badge/Quay.io-webdevops%2Fazure--resourcegraph--exporter-blue)](https://quay.io/repository/webdevops/azure-resourcegraph-exporter)
 
-Prometheus expoter for Azure ResourceGraph queries.
+Prometheus exporter for Azure ResourceGraph queries with configurable fields and transformations.
 
 Usage
 -----
@@ -32,6 +32,24 @@ Configuration file
 ------------------
 
 see [example.yaml](example.yaml)
+
+
+HTTP Endpoints
+--------------
+
+| Endpoint                       | Description                                                                         |
+|--------------------------------|-------------------------------------------------------------------------------------|
+| `/metrics`                     | Default prometheus golang metrics                                                   |
+| `/probe`                       | Execute resourcegraph queries without set module name                               |
+| `/probe?module=xzy`            | Execute resourcegraph queries for module  `xzy`                                     |
+
+Global metrics
+--------------
+
+| Metric                              | Description                                                                    |
+|-------------------------------------|--------------------------------------------------------------------------------|
+| `azure_resourcegraph_querytime`     | Summary metric about query execution time                                      |
+| `azure_resourcegraph_ratelimit`     | Current ratelimit value from the Azure API                                     |
 
 
 Example
