@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
 	"net/http"
+	"time"
 )
 
 func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
@@ -16,6 +17,9 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 	params := r.URL.Query()
 	moduleName := params.Get("module")
+
+
+	probeLogger := log.WithField("module", moduleName)
 
 	ctx := context.Background()
 
@@ -37,10 +41,14 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	metricList.Init()
 
 	for _, queryConfig := range Config.Queries {
+		startTime := time.Now()
 		// check if query matches module name
 		if queryConfig.Module != moduleName {
 			continue
 		}
+
+		contextLogger := probeLogger.WithField("metric", queryConfig.MetricConfig.Metric)
+		contextLogger.Debug("starting query")
 
 		if queryConfig.Subscriptions == nil {
 			queryConfig.Subscriptions = &defaultSubscriptions
@@ -56,6 +64,8 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 		// Run the query and get the results
 		var results, queryErr = argClient.Resources(ctx, Request)
 		if queryErr == nil {
+			contextLogger.Debug("parsing result")
+
 			if resultList, ok := results.Data.([]interface{}); ok {
 				for _, v := range resultList {
 					if resultRow, ok := v.(map[string]interface{}); ok {
@@ -65,12 +75,17 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+
+			contextLogger.Debug("metrics parsed")
 		} else {
-			log.Errorln(queryErr.Error())
+			contextLogger.Errorln(queryErr.Error())
 			http.Error(w, queryErr.Error(), http.StatusBadRequest)
 		}
+
+		prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.MetricConfig.Metric}).Observe(time.Since(startTime).Seconds())
 	}
 
+	probeLogger.Debug("building prometheus metrics")
 	for _, metricName := range metricList.GetMetricNames() {
 		metricLabelNames := metricList.GetMetricLabelNames(metricName)
 

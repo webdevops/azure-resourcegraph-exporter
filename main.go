@@ -42,6 +42,7 @@ func main() {
 
 	log.Infof("starting azure-resourcegraph-exporter v%s (%s; %s; by %v)", gitTag, gitCommit, runtime.Version(), Author)
 	log.Info(string(opts.GetJson()))
+	initGlobalMetrics()
 
 	log.Infof("loading config")
 	readConfig()
