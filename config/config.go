@@ -23,18 +23,20 @@ type (
 	}
 
 	ConfigQueryMetric struct {
-		Metric     string                   `yaml:"metric"`
-		Value      *float64                 `yaml:"value"`
-		AutoExpand bool                     `yaml:"autoExpand"`
-		Fields     []ConfigQueryMetricField `yaml:"fields"`
+		Metric       string                   `yaml:"metric"`
+		Value        *float64                 `yaml:"value"`
+		AutoExpand   bool                     `yaml:"autoExpand"`
+		Fields       []ConfigQueryMetricField `yaml:"fields"`
+		DefaultField ConfigQueryMetricField   `yaml:"defaultField"`
 	}
 
 	ConfigQueryMetricField struct {
 		Name    string                         `yaml:"name"`
+		Source  string                         `yaml:"source"`
 		Target  string                         `yaml:"target"`
 		Type    string                         `yaml:"type"`
 		Filters []ConfigQueryMetricFieldFilter `yaml:"filters"`
-		Expand  *ConfigQueryMetric             `yaml:"metric"`
+		Expand  *ConfigQueryMetric             `yaml:"expand"`
 	}
 
 	ConfigQueryMetricFieldFilter struct {
@@ -78,6 +80,13 @@ func (c *ConfigQueryMetric) Validate() error {
 		return errors.New("no metric name set")
 	}
 
+	// validate default field
+	c.DefaultField.Name = "default"
+	if err := c.DefaultField.Validate(); err != nil {
+		return err
+	}
+
+	// validate fields
 	for _, field := range c.Fields {
 		if err := field.Validate(); err != nil {
 			return err
@@ -92,6 +101,16 @@ func (c *ConfigQueryMetricField) Validate() error {
 		return errors.New("no field name set")
 	}
 
+	switch c.GetType() {
+	case "string":
+	case "expand":
+	case "id":
+	case "value":
+	case "ignore":
+	default:
+		return fmt.Errorf("unsupported type \"%s\"", c.GetType())
+	}
+
 	for _, filter := range c.Filters {
 		if err := filter.Validate(); err != nil {
 			return fmt.Errorf("field \"%v\": %v", c.Name, err)
@@ -99,6 +118,16 @@ func (c *ConfigQueryMetricField) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *ConfigQueryMetricField) GetType() (ret string) {
+	ret = strings.ToLower(c.Type)
+
+	if ret == "" {
+		ret = "string"
+	}
+
+	return
 }
 
 func (c *ConfigQueryMetricFieldFilter) Validate() error {
@@ -129,7 +158,7 @@ func (m *ConfigQueryMetric) IsExpand(field string) bool {
 
 	for _, fieldConfig := range m.Fields {
 		if fieldConfig.Name == field {
-			if fieldConfig.Type == "expand" || fieldConfig.Expand != nil {
+			if fieldConfig.IsExpand() {
 				return true
 			}
 			break
@@ -139,26 +168,45 @@ func (m *ConfigQueryMetric) IsExpand(field string) bool {
 	return false
 }
 
-func (m *ConfigQueryMetric) GetFieldConfigMap() (list map[string]ConfigQueryMetricField) {
-	list = map[string]ConfigQueryMetricField{}
+func (m *ConfigQueryMetric) GetFieldConfigMap() (list map[string][]ConfigQueryMetricField) {
+	list = map[string][]ConfigQueryMetricField{}
 
 	for _, field := range m.Fields {
-		list[field.Name] = field
+		if _, ok := list[field.Name]; !ok {
+			list[field.Name] = []ConfigQueryMetricField{}
+		}
+		list[field.GetSourceField()] = append(list[field.GetSourceField()], field)
 	}
 
 	return
 }
 
-func (f *ConfigQueryMetricField) IsIgnore() bool {
-	return f.Type == "ignore"
+func (f *ConfigQueryMetricField) GetSourceField() (ret string) {
+	ret = f.Source
+	if ret == "" {
+		ret = f.Name
+	}
+	return
 }
 
-func (f *ConfigQueryMetricField) IsId() bool {
-	return f.Type == "id"
+func (f *ConfigQueryMetricField) IsExpand() bool {
+	return f.Type == "expand" || f.Expand != nil
 }
 
-func (f *ConfigQueryMetricField) IsValue() bool {
-	return f.Type == "value"
+func (f *ConfigQueryMetricField) IsSourceField() bool {
+	return f.Source != ""
+}
+
+func (f *ConfigQueryMetricField) IsTypeIgnore() bool {
+	return f.GetType() == "ignore"
+}
+
+func (f *ConfigQueryMetricField) IsTypeId() bool {
+	return f.GetType() == "id"
+}
+
+func (f *ConfigQueryMetricField) IsTypeValue() bool {
+	return f.GetType() == "value"
 }
 
 func (f *ConfigQueryMetricField) GetTargetFieldName(sourceName string) (ret string) {

@@ -138,115 +138,74 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 		metric.value = *metricConfig.Value
 	}
 
-	idLabel := ""
-	idValue := ""
+	idFieldList := map[string]string{}
 
 	// main metric
 	for fieldName, rowValue := range row {
-		fieldConfig := config.ConfigQueryMetricField{}
-		if v, ok := fieldConfigMap[fieldName]; ok {
-			fieldConfig = v
-		}
-
-		labelName := fieldConfig.GetTargetFieldName(fieldName)
-
-		if fieldConfig.IsIgnore() {
-			continue
-		}
-
-		switch v := rowValue.(type) {
-		case string:
-			fieldValue := fieldConfig.TransformString(v)
-
-			if fieldConfig.IsId() {
-				idLabel = labelName
-				idValue = metric.labels[labelName]
-			}
-
-			metric.labels[labelName] = fieldValue
-		case int64:
-			fieldValue := fieldConfig.TransformFloat64(float64(v))
-
-			if fieldConfig.IsValue() {
-				idLabel = labelName
-				idValue = fieldValue
-			}
-
-			if fieldConfig.IsValue() {
-				metric.value = float64(v)
-			} else {
-				metric.labels[labelName] = fieldValue
-			}
-		case float64:
-			fieldValue := fieldConfig.TransformFloat64(v)
-
-			if fieldConfig.IsValue() {
-				idLabel = labelName
-				idValue = fieldValue
-			}
-
-			if fieldConfig.IsValue() {
-				metric.value = v
-			} else {
-				metric.labels[labelName] = fieldValue
-			}
-		case bool:
-			fieldValue := fieldConfig.TransformBool(v)
-
-			if fieldConfig.IsId() {
-				idLabel = labelName
-				idValue = fieldValue
-			}
-
-			if fieldConfig.IsValue() {
-				if v {
-					metric.value = 1
-				} else {
-					metric.value = 0
+		if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
+			for _, fieldConfig := range fieldConfList {
+				if fieldConfig.IsTypeIgnore() {
+					continue
 				}
-			} else {
-				metric.labels[labelName] = fieldValue
+
+				if fieldConfig.IsExpand() {
+					continue
+				}
+
+				processField(fieldName, rowValue, fieldConfig, &metric)
+
+				if fieldConfig.IsTypeId() {
+					labelName := fieldConfig.GetTargetFieldName(fieldName)
+					if _, ok := metric.labels[labelName]; ok {
+						idFieldList[labelName] = metric.labels[labelName]
+					}
+				}
+			}
+		} else {
+			fieldConfig := metricConfig.DefaultField
+			if !fieldConfig.IsTypeIgnore() {
+				processField(fieldName, rowValue, fieldConfig, &metric)
 			}
 		}
 	}
 
 	// sub metrics
 	for fieldName, rowValue := range row {
+		if !metricConfig.IsExpand(fieldName) {
+			continue
+		}
+
 		if v, ok := rowValue.(map[string]interface{}); ok {
-			fieldConfig := config.ConfigQueryMetricField{}
-			if v, ok := fieldConfigMap[fieldName]; ok {
-				fieldConfig = v
-			}
-
-			if fieldConfig.IsIgnore() {
-				continue
-			}
-
-			if metricConfig.IsExpand(fieldName) {
-				subMetricConfig := config.ConfigQueryMetric{
-					Metric: fmt.Sprintf("%s_%s", metricConfig.Metric, fieldName),
-				}
-
-				if fieldConfig.Expand != nil {
-					subMetricConfig = *fieldConfig.Expand
-				}
-
-				subMetricList := buildPrometheusMetricList(subMetricConfig, v)
-
-				for subMetricName, subMetricList := range subMetricList {
-					if _, ok := list[subMetricName]; !ok {
-						list[subMetricName] = []MetricRow{}
+			if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
+				for _, fieldConfig := range fieldConfList {
+					if fieldConfig.IsTypeIgnore() {
+						continue
 					}
 
-					for _, subMetricRow := range subMetricList {
-						if idLabel != "" && idValue != "" {
-							subMetricRow.labels[idLabel] = idValue
+					subMetricConfig := config.ConfigQueryMetric{
+						Metric: fmt.Sprintf("%s_%s", metricConfig.Metric, fieldName),
+					}
+
+					if fieldConfig.Expand != nil {
+						subMetricConfig = *fieldConfig.Expand
+					}
+
+					subMetricList := buildPrometheusMetricList(subMetricConfig, v)
+
+					for subMetricName, subMetricList := range subMetricList {
+						if _, ok := list[subMetricName]; !ok {
+							list[subMetricName] = []MetricRow{}
 						}
-						list[subMetricName] = append(list[subMetricName], subMetricRow)
+
+						for _, subMetricRow := range subMetricList {
+							for idLabel, idValue := range idFieldList {
+								subMetricRow.labels[idLabel] = idValue
+							}
+							list[subMetricName] = append(list[subMetricName], subMetricRow)
+						}
 					}
 				}
 			}
-
 		}
 	}
 
@@ -256,4 +215,40 @@ func buildPrometheusMetricList(metricConfig config.ConfigQueryMetric, row map[st
 	list[metricConfig.Metric] = append(list[metricConfig.Metric], metric)
 
 	return
+}
+
+func processField(fieldName string, value interface{}, fieldConfig config.ConfigQueryMetricField, metric *MetricRow) {
+	labelName := fieldConfig.GetTargetFieldName(fieldName)
+
+	switch v := value.(type) {
+	case string:
+		metric.labels[labelName] = fieldConfig.TransformString(v)
+	case int64:
+		fieldValue := fieldConfig.TransformFloat64(float64(v))
+
+		if fieldConfig.IsTypeValue() {
+			metric.value = float64(v)
+		} else {
+			metric.labels[labelName] = fieldValue
+		}
+	case float64:
+		fieldValue := fieldConfig.TransformFloat64(v)
+
+		if fieldConfig.IsTypeValue() {
+			metric.value = v
+		} else {
+			metric.labels[labelName] = fieldValue
+		}
+	case bool:
+		fieldValue := fieldConfig.TransformBool(v)
+		if fieldConfig.IsTypeValue() {
+			if v {
+				metric.value = 1
+			} else {
+				metric.value = 0
+			}
+		} else {
+			metric.labels[labelName] = fieldValue
+		}
+	}
 }

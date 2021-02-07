@@ -62,6 +62,10 @@ queries:
             - name: enableRbacAuthorization
               type: ignore
 
+    defaultField:
+      type: ignore
+
+
   - metric: azure_resourcestype_count
     ## only responds to /probe?module=summary
     module: summary
@@ -81,7 +85,7 @@ queries:
       Resources
       | project type, tags
     ## only use following subscriptions
-    subscriptions:
+    subscriptions2:
       - axxxx-xxxxx-xxxxxx-xxxxx
       - bxxxx-xxxxx-xxxxxx-xxxxx
       - cxxxx-xxxxx-xxxxxx-xxxxx

@@ -21,4 +21,5 @@ FROM gcr.io/distroless/static
 ENV LOG_JSON=1
 COPY --from=build /go/src/github.com/webdevops/azure-resourcegraph-exporter/azure-resourcegraph-exporter /
 USER 1000
+EXPOSE 8080
 ENTRYPOINT ["/azure-resourcegraph-exporter"]
