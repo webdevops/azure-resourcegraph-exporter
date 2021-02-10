@@ -21,12 +21,13 @@ Application Options:
       --azure-environment=  Azure environment name (default: AZUREPUBLICCLOUD) [$AZURE_ENVIRONMENT]
       --azure-subscription= Azure subscription ID [$AZURE_SUBSCRIPTION_ID]
   -c, --config=             Config path [$CONFIG]
-      --scrape-time=        Default scrape time (time.duration) (default: 12h) [$SCRAPE_TIME]
       --bind=               Server address (default: :8080) [$SERVER_BIND]
 
 Help Options:
   -h, --help                Show this help message
-  ```
+```
+
+for Azure API authentication (using ENV vars) see https://github.com/Azure/azure-sdk-for-go#authentication
 
 Configuration file
 ------------------

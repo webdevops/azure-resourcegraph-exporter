@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type (
@@ -24,11 +23,6 @@ type (
 		// config
 		Config struct {
 			Path string `long:"config" short:"c"  env:"CONFIG"   description:"Config path" required:"true"`
-		}
-
-		// scrape times
-		Scrape struct {
-			Time time.Duration `long:"scrape-time"         env:"SCRAPE_TIME"           description:"Default scrape time (time.duration)"       default:"12h"`
 		}
 
 		// general options
