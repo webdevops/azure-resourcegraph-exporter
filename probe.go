@@ -37,7 +37,6 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-
 	ctx := context.Background()
 
 	defaultSubscriptions := []string{}
@@ -57,7 +56,6 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 	metricList := MetricList{}
 	metricList.Init()
-
 
 	// check if value is cached
 	executeQuery := true
@@ -250,9 +248,7 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 							list[subMetricName] = []MetricRow{}
 						}
 
-						for _, subMetricRow := range subMetricList {
-							list[subMetricName] = append(list[subMetricName], subMetricRow)
-						}
+						list[subMetricName] = append(list[subMetricName], subMetricList...)
 					}
 				}
 			}

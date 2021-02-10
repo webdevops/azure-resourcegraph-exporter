@@ -48,7 +48,7 @@ func main() {
 	log.Info(string(opts.GetJson()))
 	initGlobalMetrics()
 
-	metricCache = cache.New(120 * time.Second, 60 * time.Second)
+	metricCache = cache.New(120*time.Second, 60*time.Second)
 
 	log.Infof("loading config")
 	readConfig()

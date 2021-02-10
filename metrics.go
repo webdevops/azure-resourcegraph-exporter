@@ -16,7 +16,7 @@ type (
 func NewMetricRow() *MetricRow {
 	return &MetricRow{
 		Labels: prometheus.Labels{},
-		Value: 1,
+		Value:  1,
 	}
 }
 

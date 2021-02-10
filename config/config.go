@@ -17,7 +17,7 @@ type (
 
 	ConfigQuery struct {
 		MetricConfig  ConfigQueryMetric `yaml:",inline"`
-		Metric       string                   `yaml:"metric"`
+		Metric        string            `yaml:"metric"`
 		Module        string            `yaml:"module"`
 		Query         string            `yaml:"query"`
 		Subscriptions *[]string         `yaml:"subscriptions"`
