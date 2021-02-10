@@ -48,13 +48,13 @@ queries:
 
       ## expand tags into own metric
       - name: tags
-        expand:
-          metric: azure_resources_tags
+        metric: azure_resources_tags
+        expand: {}
 
       ## expand properties
       - name: properties
+        metric: azure_resources_props
         expand:
-          metric: azure_resources_props
           ## also expand field values inside properties
           autoExpand: true
           fields:

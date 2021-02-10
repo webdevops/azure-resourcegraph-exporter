@@ -13,6 +13,13 @@ type (
 	}
 )
 
+func NewMetricRow() *MetricRow {
+	return &MetricRow{
+		labels: prometheus.Labels{},
+		value: 1,
+	}
+}
+
 func (l *MetricList) Init() {
 	l.list = map[string][]MetricRow{}
 }

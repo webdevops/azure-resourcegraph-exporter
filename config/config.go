@@ -17,13 +17,13 @@ type (
 
 	ConfigQuery struct {
 		MetricConfig  ConfigQueryMetric `yaml:",inline"`
+		Metric       string                   `yaml:"metric"`
 		Module        string            `yaml:"module"`
 		Query         string            `yaml:"query"`
 		Subscriptions *[]string         `yaml:"subscriptions"`
 	}
 
 	ConfigQueryMetric struct {
-		Metric       string                   `yaml:"metric"`
 		Value        *float64                 `yaml:"value"`
 		AutoExpand   bool                     `yaml:"autoExpand"`
 		Fields       []ConfigQueryMetricField `yaml:"fields"`
@@ -32,6 +32,7 @@ type (
 
 	ConfigQueryMetricField struct {
 		Name    string                         `yaml:"name"`
+		Metric  string                         `yaml:"metric"`
 		Source  string                         `yaml:"source"`
 		Target  string                         `yaml:"target"`
 		Type    string                         `yaml:"type"`
@@ -60,7 +61,7 @@ func (c *Config) Validate() error {
 
 	for _, queryConfig := range c.Queries {
 		if err := queryConfig.Validate(); err != nil {
-			return fmt.Errorf("query \"%v\": %v", queryConfig.MetricConfig.Metric, err)
+			return fmt.Errorf("query \"%v\": %v", queryConfig.Metric, err)
 		}
 	}
 
@@ -76,10 +77,6 @@ func (c *ConfigQuery) Validate() error {
 }
 
 func (c *ConfigQueryMetric) Validate() error {
-	if c.Metric == "" {
-		return errors.New("no metric name set")
-	}
-
 	// validate default field
 	c.DefaultField.Name = "default"
 	if err := c.DefaultField.Validate(); err != nil {
@@ -102,13 +99,13 @@ func (c *ConfigQueryMetricField) Validate() error {
 	}
 
 	switch c.GetType() {
-	case "string":
 	case "expand":
+	case "string":
 	case "id":
 	case "value":
 	case "ignore":
 	default:
-		return fmt.Errorf("unsupported type \"%s\"", c.GetType())
+		return fmt.Errorf("field \"%s\": unsupported type \"%s\"", c.Name, c.GetType())
 	}
 
 	for _, filter := range c.Filters {

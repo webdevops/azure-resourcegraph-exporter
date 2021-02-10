@@ -23,14 +23,15 @@ queries:
       - name: subscriptionId
         type: id
       - name: count_
+        metric: azurerm_resourcestype_resourcecount
         type: value
       - name: sku
+        metric: azurerm_resourcestype_sku
         expand:
-          metric: azurerm_resourcestype_sku
           value: 1
       - name: sku_properties
+        metric: azurerm_resourcestype_sku
         expand:
-          metric: azurerm_resourcestype_sku
           value: 1
     defaultField:
       type: ignore
@@ -38,7 +39,7 @@ queries:
   #########################################################
   ## ResourceGroups with resourcecount and tags
   #########################################################
-  - metric: azurerm_resourcegroup
+  - metric: azurerm_resourcegroup_info
     query: |-
       Resources
       | project subscriptionId, resourceGroup, tags
@@ -46,17 +47,16 @@ queries:
           Resources | project subscriptionId, resourceGroup | summarize resourceCount=count() by subscriptionId,resourceGroup
         ) on subscriptionId,resourceGroup
     fields:
-      ## use count_ as metrics value
-      ## hint: result field  must be int or float
       - name: resourceGroup
         type: id
       - name: subscriptionId
         type: id
       - name: resourceCount
+        metric: azurerm_resourcegroup_resourcecount
         type: value
       - name: tags
+        metric: azurerm_resourcegroup_tags
         expand:
-          metric: azurerm_resourcegroup_tags
           value: 1
           fields: *tagFields
           defaultField: *defaultTagField
@@ -87,8 +87,8 @@ queries:
       - name: resourceGroup
 
       - name: tags
+        metric: azure_resource_tags
         expand:
-          metric: azure_resources_tags
           value: 1
           fields: *tagFields
           defaultField: *defaultTagField
