@@ -41,7 +41,8 @@ HTTP Endpoints
 |--------------------------------|-------------------------------------------------------------------------------------|
 | `/metrics`                     | Default prometheus golang metrics                                                   |
 | `/probe`                       | Execute resourcegraph queries without set module name                               |
-| `/probe?module=xzy`            | Execute resourcegraph queries for module  `xzy`                                     |
+| `/probe?module=xzy`            | Execute resourcegraph queries for module `xzy`                                      |
+| `/probe?module=xzy&cache=2m`   | Execute resourcegraph queries for module `xzy` and enable caching for 2 minutes     |
 
 Global metrics
 --------------

@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/jessevdk/go-flags"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
@@ -16,6 +17,7 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
@@ -32,6 +34,8 @@ var (
 	AzureSubscriptions []subscriptions.Subscription
 	AzureEnvironment   azure.Environment
 
+	metricCache *cache.Cache
+
 	// Git version information
 	gitCommit = "<unknown>"
 	gitTag    = "<unknown>"
@@ -43,6 +47,8 @@ func main() {
 	log.Infof("starting azure-resourcegraph-exporter v%s (%s; %s; by %v)", gitTag, gitCommit, runtime.Version(), Author)
 	log.Info(string(opts.GetJson()))
 	initGlobalMetrics()
+
+	metricCache = cache.New(120 * time.Second, 60 * time.Second)
 
 	log.Infof("loading config")
 	readConfig()

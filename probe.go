@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
 	"github.com/Azure/go-autorest/autorest"
@@ -17,10 +18,25 @@ import (
 func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
 
+	requestTime := time.Now()
+
 	params := r.URL.Query()
 	moduleName := params.Get("module")
+	cacheKey := "cache:" + moduleName
 
 	probeLogger := log.WithField("module", moduleName)
+
+	cacheTime := 0 * time.Second
+	cacheTimeDurationStr := params.Get("cache")
+	if cacheTimeDurationStr != "" {
+		if v, err := time.ParseDuration(cacheTimeDurationStr); err == nil {
+			cacheTime = v
+		} else {
+			probeLogger.Errorln(err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+
 
 	ctx := context.Background()
 
@@ -42,49 +58,78 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	metricList := MetricList{}
 	metricList.Init()
 
-	for _, queryConfig := range Config.Queries {
-		startTime := time.Now()
-		// check if query matches module name
-		if queryConfig.Module != moduleName {
-			continue
+
+	// check if value is cached
+	executeQuery := true
+	if cacheTime.Seconds() > 0 {
+		if v, ok := metricCache.Get(cacheKey); ok {
+			if cacheData, ok := v.([]byte); ok {
+				if err := json.Unmarshal(cacheData, &metricList); err == nil {
+					probeLogger.Debug("fetched from cache")
+					w.Header().Add("X-metrics-cached", "true")
+					executeQuery = false
+				} else {
+					probeLogger.Debug("unable to parse cache data")
+				}
+			}
 		}
+	}
 
-		contextLogger := probeLogger.WithField("metric", queryConfig.Metric)
-		contextLogger.Debug("starting query")
+	if executeQuery {
+		w.Header().Add("X-metrics-cached", "false")
+		for _, queryConfig := range Config.Queries {
+			startTime := time.Now()
+			// check if query matches module name
+			if queryConfig.Module != moduleName {
+				continue
+			}
 
-		if queryConfig.Subscriptions == nil {
-			queryConfig.Subscriptions = &defaultSubscriptions
-		}
+			contextLogger := probeLogger.WithField("metric", queryConfig.Metric)
+			contextLogger.Debug("starting query")
 
-		// Create the query request
-		Request := resourcegraph.QueryRequest{
-			Subscriptions: queryConfig.Subscriptions,
-			Query:         &queryConfig.Query,
-			Options:       &RequestOptions,
-		}
+			if queryConfig.Subscriptions == nil {
+				queryConfig.Subscriptions = &defaultSubscriptions
+			}
 
-		// Run the query and get the results
-		var results, queryErr = resourcegraphClient.Resources(ctx, Request)
-		if queryErr == nil {
-			contextLogger.Debug("parsing result")
+			// Create the query request
+			Request := resourcegraph.QueryRequest{
+				Subscriptions: queryConfig.Subscriptions,
+				Query:         &queryConfig.Query,
+				Options:       &RequestOptions,
+			}
 
-			if resultList, ok := results.Data.([]interface{}); ok {
-				for _, v := range resultList {
-					if resultRow, ok := v.(map[string]interface{}); ok {
-						for metricName, metric := range buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
-							metricList.Add(metricName, metric...)
+			// Run the query and get the results
+			var results, queryErr = resourcegraphClient.Resources(ctx, Request)
+			if queryErr == nil {
+				contextLogger.Debug("parsing result")
+
+				if resultList, ok := results.Data.([]interface{}); ok {
+					for _, v := range resultList {
+						if resultRow, ok := v.(map[string]interface{}); ok {
+							for metricName, metric := range buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
+								metricList.Add(metricName, metric...)
+							}
 						}
 					}
 				}
+
+				contextLogger.Debug("metrics parsed")
+			} else {
+				contextLogger.Errorln(queryErr.Error())
+				http.Error(w, queryErr.Error(), http.StatusBadRequest)
 			}
 
-			contextLogger.Debug("metrics parsed")
-		} else {
-			contextLogger.Errorln(queryErr.Error())
-			http.Error(w, queryErr.Error(), http.StatusBadRequest)
+			prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(time.Since(startTime).Seconds())
 		}
 
-		prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(time.Since(startTime).Seconds())
+		// store to cache (if enabeld)
+		if cacheTime.Seconds() > 0 {
+			if cacheData, err := json.Marshal(metricList); err == nil {
+				w.Header().Add("X-metrics-cached-until", time.Now().Add(cacheTime).Format(time.RFC3339))
+				metricCache.Set(cacheKey, cacheData, cacheTime)
+				probeLogger.Debugf("saved metric to cache for %s minutes", cacheTime.String())
+			}
+		}
 	}
 
 	probeLogger.Debug("building prometheus metrics")
@@ -99,14 +144,15 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 		for _, metric := range metricList.GetMetricList(metricName) {
 			for _, labelName := range metricLabelNames {
-				if _, ok := metric.labels[labelName]; !ok {
-					metric.labels[labelName] = ""
+				if _, ok := metric.Labels[labelName]; !ok {
+					metric.Labels[labelName] = ""
 				}
 			}
 
-			gaugeVec.With(metric.labels).Set(metric.value)
+			gaugeVec.With(metric.Labels).Set(metric.Value)
 		}
 	}
+	probeLogger.WithField("duration", time.Since(requestTime).String()).Debug("finished request")
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
@@ -133,7 +179,7 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 	mainMetrics[name] = NewMetricRow()
 
 	if metricConfig.Value != nil {
-		mainMetrics[name].value = *metricConfig.Value
+		mainMetrics[name].Value = *metricConfig.Value
 	}
 
 	idFieldList := map[string]string{}
@@ -162,8 +208,8 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 
 				if fieldConfig.IsTypeId() {
 					labelName := fieldConfig.GetTargetFieldName(fieldName)
-					if _, ok := mainMetrics[name].labels[labelName]; ok {
-						idFieldList[labelName] = mainMetrics[name].labels[labelName]
+					if _, ok := mainMetrics[name].Labels[labelName]; ok {
+						idFieldList[labelName] = mainMetrics[name].Labels[labelName]
 					}
 				}
 			}
@@ -226,7 +272,7 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 	for metricName := range list {
 		for row := range list[metricName] {
 			for idLabel, idValue := range idFieldList {
-				list[metricName][row].labels[idLabel] = idValue
+				list[metricName][row].Labels[idLabel] = idValue
 			}
 		}
 	}
@@ -239,33 +285,33 @@ func processField(fieldName string, value interface{}, fieldConfig config.Config
 
 	switch v := value.(type) {
 	case string:
-		metric.labels[labelName] = fieldConfig.TransformString(v)
+		metric.Labels[labelName] = fieldConfig.TransformString(v)
 	case int64:
 		fieldValue := fieldConfig.TransformFloat64(float64(v))
 
 		if fieldConfig.IsTypeValue() {
-			metric.value = float64(v)
+			metric.Value = float64(v)
 		} else {
-			metric.labels[labelName] = fieldValue
+			metric.Labels[labelName] = fieldValue
 		}
 	case float64:
 		fieldValue := fieldConfig.TransformFloat64(v)
 
 		if fieldConfig.IsTypeValue() {
-			metric.value = v
+			metric.Value = v
 		} else {
-			metric.labels[labelName] = fieldValue
+			metric.Labels[labelName] = fieldValue
 		}
 	case bool:
 		fieldValue := fieldConfig.TransformBool(v)
 		if fieldConfig.IsTypeValue() {
 			if v {
-				metric.value = 1
+				metric.Value = 1
 			} else {
-				metric.value = 0
+				metric.Value = 0
 			}
 		} else {
-			metric.labels[labelName] = fieldValue
+			metric.Labels[labelName] = fieldValue
 		}
 	}
 }

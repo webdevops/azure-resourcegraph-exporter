@@ -4,38 +4,38 @@ import "github.com/prometheus/client_golang/prometheus"
 
 type (
 	MetricList struct {
-		list map[string][]MetricRow
+		List map[string][]MetricRow
 	}
 
 	MetricRow struct {
-		labels prometheus.Labels
-		value  float64
+		Labels prometheus.Labels
+		Value  float64
 	}
 )
 
 func NewMetricRow() *MetricRow {
 	return &MetricRow{
-		labels: prometheus.Labels{},
-		value: 1,
+		Labels: prometheus.Labels{},
+		Value: 1,
 	}
 }
 
 func (l *MetricList) Init() {
-	l.list = map[string][]MetricRow{}
+	l.List = map[string][]MetricRow{}
 }
 
 func (l *MetricList) Add(name string, metric ...MetricRow) {
-	if _, ok := l.list[name]; !ok {
-		l.list[name] = []MetricRow{}
+	if _, ok := l.List[name]; !ok {
+		l.List[name] = []MetricRow{}
 	}
 
-	l.list[name] = append(l.list[name], metric...)
+	l.List[name] = append(l.List[name], metric...)
 }
 
 func (l *MetricList) GetMetricNames() []string {
 	list := []string{}
 
-	for name := range l.list {
+	for name := range l.List {
 		list = append(list, name)
 	}
 
@@ -43,14 +43,14 @@ func (l *MetricList) GetMetricNames() []string {
 }
 
 func (l *MetricList) GetMetricList(name string) []MetricRow {
-	return l.list[name]
+	return l.List[name]
 }
 
 func (l *MetricList) GetMetricLabelNames(name string) []string {
 	uniqueLabelMap := map[string]string{}
 
-	for _, row := range l.list[name] {
-		for labelName := range row.labels {
+	for _, row := range l.List[name] {
+		for labelName := range row.Labels {
 			uniqueLabelMap[labelName] = labelName
 		}
 	}
