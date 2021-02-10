@@ -64,6 +64,94 @@ queries:
       type: ignore
 
   #########################################################
+  ## ManagedClusters
+  #########################################################
+  - metric: azurerm_managedclusters_info
+    query: |-
+      Resources
+      | where type == "microsoft.containerservice/managedclusters"
+      | project id, name, subscriptionId, location, type, resourceGroup, tags, kubernetesVersion = properties.kubernetesVersion
+    value: 1
+    fields:
+      - name: id
+        target: resourceId
+        type: id
+
+      - name: name
+        target: cluster
+
+      - name: subscriptionId
+
+      - name: location
+
+      - name: type
+        target: provider
+
+      - name: resourceGroup
+
+      - name: kubernetesVersion
+
+      - name: tags
+        metric: azure_resource_tags
+        expand:
+          value: 1
+          fields: *tagFields
+          defaultField: *defaultTagField
+
+    defaultField:
+      type: ignore
+
+  #########################################################
+  ## ManagedClusters
+  #########################################################
+  - metric: azurerm_vmss_info
+    query: |-
+      Resources
+      | where type == "microsoft.compute/virtualmachinescalesets"
+    value: 1
+    fields:
+      - name: id
+        target: resourceId
+        type: id
+
+      - name: name
+        target: cluster
+
+      - name: subscriptionId
+
+      - name: location
+
+      - name: type
+        target: provider
+
+      - name: resourceGroup
+
+      - name: sku
+        metric: azurerm_vmss_capacity
+        expand:
+          fields:
+            - name: capacity
+              type: value
+          defaultField:
+            type: ignore
+
+      - name: tags
+        metric: azure_resource_tags
+        expand:
+          value: 1
+          fields: *tagFields
+          defaultField: *defaultTagField
+
+    defaultField:
+      type: ignore
+
+
+
+
+
+
+
+  #########################################################
   ## Resource info with labels
   #########################################################
   - metric: azurerm_resource_info
@@ -71,9 +159,7 @@ queries:
       Resources
     value: 1
     fields:
-      ## name of the field from the result
       - name: id
-        ## target name for metric label
         target: resourceId
         type: id
 
@@ -95,3 +181,4 @@ queries:
 
     defaultField:
       type: ignore
+
