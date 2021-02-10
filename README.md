@@ -31,8 +31,8 @@ Help Options:
 Configuration file
 ------------------
 
-see [example.yaml](example.yaml)
-
+* see [example.yaml](example.yaml)
+* see [example.azure.yaml](example.azure.yaml)
 
 HTTP Endpoints
 --------------
