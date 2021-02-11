@@ -145,6 +145,7 @@ queries:
           fields:
             -
               name: name
+              type: id
             -
               name: osType
             -
