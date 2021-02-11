@@ -170,21 +170,22 @@ func respondDecorator() autorest.RespondDecorator {
 
 func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetric, row map[string]interface{}) (list map[string][]MetricRow) {
 	list = map[string][]MetricRow{}
-
-	fieldConfigMap := metricConfig.GetFieldConfigMap()
+	idFieldList := map[string]string{}
 
 	mainMetrics := map[string]*MetricRow{}
 	mainMetrics[name] = NewMetricRow()
 
+	fieldConfigMap := metricConfig.GetFieldConfigMap()
+
+	// add default value to main metric (if set)
 	if metricConfig.Value != nil {
 		mainMetrics[name].Value = *metricConfig.Value
 	}
 
-	idFieldList := map[string]string{}
-
 	// main metric
 	for fieldName, rowValue := range row {
 		if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
+			// field configuration available
 			for _, fieldConfig := range fieldConfList {
 				if fieldConfig.IsTypeIgnore() {
 					continue
@@ -202,7 +203,7 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 					fieldConfig.Metric = name
 				}
 
-				processField(fieldName, rowValue, fieldConfig, mainMetrics[fieldConfig.Metric])
+				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, mainMetrics[fieldConfig.Metric])
 
 				if fieldConfig.IsTypeId() {
 					labelName := fieldConfig.GetTargetFieldName(fieldName)
@@ -212,9 +213,10 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 				}
 			}
 		} else {
+			// no field config, fall back to "defaultField"
 			fieldConfig := metricConfig.DefaultField
 			if !fieldConfig.IsTypeIgnore() {
-				processField(fieldName, rowValue, fieldConfig, mainMetrics[name])
+				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, mainMetrics[name])
 			}
 		}
 	}
@@ -225,16 +227,7 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 			continue
 		}
 
-		// convert to array even if not array
-		rowValueList := []interface{}{}
-		switch v := rowValue.(type) {
-		case map[string]interface{}:
-			rowValueList = append(rowValueList, v)
-		case []interface{}:
-			rowValueList = v
-		}
-
-		for _, rowValue := range rowValueList {
+		for _, rowValue := range convertSubMetricInterfaceToArray(rowValue) {
 			if v, ok := rowValue.(map[string]interface{}); ok {
 				if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
 					for _, fieldConfig := range fieldConfList {
@@ -242,6 +235,7 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 							continue
 						}
 
+						// add fieldname to metric if no custom metric is set
 						if fieldConfig.Metric == "" {
 							fieldConfig.Metric = fmt.Sprintf("%s_%s", name, fieldName)
 						}
@@ -257,7 +251,6 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 							if _, ok := list[subMetricName]; !ok {
 								list[subMetricName] = []MetricRow{}
 							}
-
 							list[subMetricName] = append(list[subMetricName], subMetricList...)
 						}
 					}
@@ -272,7 +265,6 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 			list[metricName] = []MetricRow{}
 		}
 		list[metricName] = append(list[metricName], *metricRow)
-
 	}
 
 	// add id labels
@@ -285,49 +277,4 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 	}
 
 	return
-}
-
-func processField(fieldName string, value interface{}, fieldConfig config.ConfigQueryMetricField, metric *MetricRow) {
-	labelName := fieldConfig.GetTargetFieldName(fieldName)
-
-	switch v := value.(type) {
-	case string:
-		v = fieldConfig.TransformString(v)
-		if fieldConfig.IsTypeValue() {
-			if value, err := strconv.ParseFloat(v, 64); err == nil {
-				metric.Value = value
-			} else {
-				metric.Value = 0
-			}
-		} else {
-			metric.Labels[labelName] = v
-		}
-	case int64:
-		fieldValue := fieldConfig.TransformFloat64(float64(v))
-
-		if fieldConfig.IsTypeValue() {
-			metric.Value = float64(v)
-		} else {
-			metric.Labels[labelName] = fieldValue
-		}
-	case float64:
-		fieldValue := fieldConfig.TransformFloat64(v)
-
-		if fieldConfig.IsTypeValue() {
-			metric.Value = v
-		} else {
-			metric.Labels[labelName] = fieldValue
-		}
-	case bool:
-		fieldValue := fieldConfig.TransformBool(v)
-		if fieldConfig.IsTypeValue() {
-			if v {
-				metric.Value = 1
-			} else {
-				metric.Value = 0
-			}
-		} else {
-			metric.Labels[labelName] = fieldValue
-		}
-	}
 }
