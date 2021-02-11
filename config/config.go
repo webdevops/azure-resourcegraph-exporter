@@ -101,6 +101,8 @@ func (c *ConfigQueryMetricField) Validate() error {
 	switch c.GetType() {
 	case "expand":
 	case "string":
+	case "boolean":
+	case "bool":
 	case "id":
 	case "value":
 	case "ignore":
@@ -219,6 +221,21 @@ func (f *ConfigQueryMetricField) GetTargetFieldName(sourceName string) (ret stri
 func (f *ConfigQueryMetricField) TransformString(value string) (ret string) {
 	ret = value
 
+	switch f.Type {
+	case "bool":
+		fallthrough
+	case "boolean":
+		switch strings.ToLower(ret) {
+		case "1":
+			fallthrough
+		case "true":
+			fallthrough
+		case "yes":
+			ret = "true"
+		default:
+			ret = "false"
+		}
+	}
 	for _, filter := range f.Filters {
 		switch strings.ToLower(filter.Type) {
 		case "tolower":

@@ -70,33 +70,47 @@ queries:
     query: |-
       Resources
       | where type == "microsoft.containerservice/managedclusters"
-      | project id, name, subscriptionId, location, type, resourceGroup, tags, kubernetesVersion = properties.kubernetesVersion
+      | project id, name, subscriptionId, location, type, resourceGroup, tags, kubernetesVersion = properties.kubernetesVersion, agentPoolProfiles = properties.agentPoolProfiles
     value: 1
     fields:
       - name: id
         target: resourceId
         type: id
 
-      - name: name
-        target: cluster
-
-      - name: subscriptionId
-
-      - name: location
-
-      - name: type
-        target: provider
-
-      - name: resourceGroup
-
-      - name: kubernetesVersion
-
-      - name: tags
-        metric: azure_resource_tags
+      - name: agentPoolProfiles
+        metric: azurerm_managedclusters_pool
         expand:
           value: 1
-          fields: *tagFields
-          defaultField: *defaultTagField
+          fields:
+            - name: name
+            - name: osType
+            - name: vmSize
+            - name: orchestratorVersion
+            - name: enableAutoScaling
+              type: boolean
+              target: autoScaling
+
+            - name: count
+              metric: azurerm_managedclusters_pool_size_current
+              type: value
+
+            - name: minCount
+              metric: azurerm_managedclusters_pool_size_min
+              type: value
+
+            - name: maxCount
+              metric: azurerm_managedclusters_pool_size_max
+
+            - name: maxPods
+              metric: azurerm_managedclusters_pool_maxpods
+              type: value
+
+            - name: osDiskSizeGB
+              metric: azurerm_managedclusters_pool_os_disksize
+              type: value
+
+          defaultField:
+            type: ignore
 
     defaultField:
       type: ignore

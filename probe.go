@@ -225,30 +225,41 @@ func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 			continue
 		}
 
-		if v, ok := rowValue.(map[string]interface{}); ok {
-			if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
-				for _, fieldConfig := range fieldConfList {
-					if fieldConfig.IsTypeIgnore() {
-						continue
-					}
+		// convert to array even if not array
+		rowValueList := []interface{}{}
+		switch v := rowValue.(type) {
+		case map[string]interface{}:
+			rowValueList = append(rowValueList, v)
+		case []interface{}:
+			rowValueList = v
+		}
 
-					if fieldConfig.Metric == "" {
-						fieldConfig.Metric = fmt.Sprintf("%s_%s", name, fieldName)
-					}
-
-					subMetricConfig := config.ConfigQueryMetric{}
-					if fieldConfig.Expand != nil {
-						subMetricConfig = *fieldConfig.Expand
-					}
-
-					subMetricList := buildPrometheusMetricList(fieldConfig.Metric, subMetricConfig, v)
-
-					for subMetricName, subMetricList := range subMetricList {
-						if _, ok := list[subMetricName]; !ok {
-							list[subMetricName] = []MetricRow{}
+		for _, rowValue := range rowValueList {
+			if v, ok := rowValue.(map[string]interface{}); ok {
+				if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
+					for _, fieldConfig := range fieldConfList {
+						if fieldConfig.IsTypeIgnore() {
+							continue
 						}
 
-						list[subMetricName] = append(list[subMetricName], subMetricList...)
+						if fieldConfig.Metric == "" {
+							fieldConfig.Metric = fmt.Sprintf("%s_%s", name, fieldName)
+						}
+
+						subMetricConfig := config.ConfigQueryMetric{}
+						if fieldConfig.Expand != nil {
+							subMetricConfig = *fieldConfig.Expand
+						}
+
+						subMetricList := buildPrometheusMetricList(fieldConfig.Metric, subMetricConfig, v)
+
+						for subMetricName, subMetricList := range subMetricList {
+							if _, ok := list[subMetricName]; !ok {
+								list[subMetricName] = []MetricRow{}
+							}
+
+							list[subMetricName] = append(list[subMetricName], subMetricList...)
+						}
 					}
 				}
 			}
