@@ -230,6 +230,7 @@ queries:
   ## Resource info with labels
   #########################################################
   # be aware that this might exceed the row limit of ResourceGraph queries!
+  # this example might be better for azure-resourcemanager-exporter
   - metric: azurerm_resource_info
     query: |-
       Resources
