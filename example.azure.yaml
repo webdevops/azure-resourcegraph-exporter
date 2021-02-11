@@ -64,49 +64,76 @@ queries:
       type: ignore
 
   #########################################################
-  ## ManagedClusters
+  ## AKS
   #########################################################
-  - metric: azurerm_managedclusters_info
+  - metric: azurerm_managedclusters_aks_info
     query: |-
       Resources
       | where type == "microsoft.containerservice/managedclusters"
-      | project id, name, subscriptionId, location, type, resourceGroup, tags, kubernetesVersion = properties.kubernetesVersion, agentPoolProfiles = properties.agentPoolProfiles
+      | where isnotempty(properties.kubernetesVersion)
+      | project id, name, subscriptionId, location, type, resourceGroup, tags, version = properties.kubernetesVersion, agentPoolProfiles = properties.agentPoolProfiles
     value: 1
     fields:
       - name: id
         target: resourceId
         type: id
 
+      - name: name
+        target: cluster
+
+      - name: subscriptionId
+
+      - name: location
+
+      - name: type
+        target: provider
+
+      - name: resourceGroup
+
+      - name: kubernetesVersion
+
+      - name: tags
+        metric: azure_resource_tags
+        expand:
+          value: 1
+          fields: *tagFields
+          defaultField: *defaultTagField
+
       - name: agentPoolProfiles
-        metric: azurerm_managedclusters_pool
+        metric: azurerm_managedclusters_aks_pool
         expand:
           value: 1
           fields:
             - name: name
+
             - name: osType
+
             - name: vmSize
+
             - name: orchestratorVersion
+              target: version
+
             - name: enableAutoScaling
               type: boolean
               target: autoScaling
 
             - name: count
-              metric: azurerm_managedclusters_pool_size_current
+              metric: azurerm_managedclusters_aks_pool_size
               type: value
 
             - name: minCount
-              metric: azurerm_managedclusters_pool_size_min
+              metric: azurerm_managedclusters_aks_pool_size_min
               type: value
 
             - name: maxCount
-              metric: azurerm_managedclusters_pool_size_max
+              metric: azurerm_managedclusters_aks_pool_size_max
 
             - name: maxPods
-              metric: azurerm_managedclusters_pool_maxpods
+              metric: azurerm_managedclusters_aks_pool_maxpods
               type: value
 
             - name: osDiskSizeGB
-              metric: azurerm_managedclusters_pool_os_disksize
+              metric: azurerm_managedclusters_aks_pool_os_disksize
               type: value
 
           defaultField:
