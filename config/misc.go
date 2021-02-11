@@ -25,7 +25,7 @@ var (
 	}
 )
 
-func convertStringToUnixtime (val string) (ret string) {
+func convertStringToUnixtime(val string) (ret string) {
 	for _, timeFormat := range timeFormats {
 		if parseVal, parseErr := time.Parse(timeFormat, val); parseErr == nil && parseVal.Unix() > 0 {
 			ret = fmt.Sprintf("%v", parseVal.Unix())
