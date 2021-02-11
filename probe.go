@@ -292,7 +292,16 @@ func processField(fieldName string, value interface{}, fieldConfig config.Config
 
 	switch v := value.(type) {
 	case string:
-		metric.Labels[labelName] = fieldConfig.TransformString(v)
+		v = fieldConfig.TransformString(v)
+		if fieldConfig.IsTypeValue() {
+			if value, err := strconv.ParseFloat(v, 64); err == nil {
+				metric.Value = value
+			} else {
+				metric.Value = 0
+			}
+		} else {
+			metric.Labels[labelName] = v
+		}
 	case int64:
 		fieldValue := fieldConfig.TransformFloat64(float64(v))
 

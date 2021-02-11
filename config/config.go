@@ -244,6 +244,8 @@ func (f *ConfigQueryMetricField) TransformString(value string) (ret string) {
 			ret = strings.ToUpper(ret)
 		case "totitle":
 			ret = strings.ToTitle(ret)
+		case "tounixtime":
+			ret = convertStringToUnixtime(ret)
 		case "regexp":
 			if filter.parsedRegexp == nil {
 				filter.parsedRegexp = regexp.MustCompile(filter.RegExp)
