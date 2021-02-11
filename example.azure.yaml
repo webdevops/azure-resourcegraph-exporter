@@ -16,20 +16,23 @@ queries:
             Resources | project subscriptionId, type | summarize count() by subscriptionId,type
           ) on subscriptionId,type
     fields:
-      ## use count_ as metrics value
-      ## hint: result field  must be int or float
-      - name: type
+      -
+        name: type
         type: id
-      - name: subscriptionId
+      -
+        name: subscriptionId
         type: id
-      - name: count_
+      -
+        name: count_
         metric: azurerm_resourcestype_resourcecount
         type: value
-      - name: sku
+      -
+        name: sku
         metric: azurerm_resourcestype_sku
         expand:
           value: 1
-      - name: sku_properties
+      -
+        name: sku_properties
         metric: azurerm_resourcestype_sku
         expand:
           value: 1
@@ -47,14 +50,18 @@ queries:
           Resources | project subscriptionId, resourceGroup | summarize resourceCount=count() by subscriptionId,resourceGroup
         ) on subscriptionId,resourceGroup
     fields:
-      - name: resourceGroup
+      -
+        name: resourceGroup
         type: id
-      - name: subscriptionId
+      -
+        name: subscriptionId
         type: id
-      - name: resourceCount
+      -
+        name: resourceCount
         metric: azurerm_resourcegroup_resourcecount
         type: value
-      - name: tags
+      -
+        name: tags
         metric: azurerm_resourcegroup_tags
         expand:
           value: 1
@@ -74,65 +81,67 @@ queries:
       | project id, name, subscriptionId, location, type, resourceGroup, tags, version = properties.kubernetesVersion, agentPoolProfiles = properties.agentPoolProfiles
     value: 1
     fields:
-      - name: id
+      -
+        name: id
         target: resourceId
         type: id
-
-      - name: name
+      -
+        name: name
         target: cluster
-
-      - name: subscriptionId
-
-      - name: location
-
-      - name: type
+      -
+        name: subscriptionId
+      -
+        name: location
+      -
+        name: type
         target: provider
-
-      - name: resourceGroup
-
-      - name: kubernetesVersion
-
-      - name: tags
+      -
+        name: resourceGroup
+      -
+        name: kubernetesVersion
+      -
+        name: tags
         metric: azure_resource_tags
         expand:
           value: 1
           fields: *tagFields
           defaultField: *defaultTagField
-
-      - name: agentPoolProfiles
+      -
+        name: agentPoolProfiles
         metric: azurerm_managedclusters_aks_pool
         expand:
           value: 1
           fields:
-            - name: name
-
-            - name: osType
-
-            - name: vmSize
-
-            - name: orchestratorVersion
+            -
+              name: name
+            -
+              name: osType
+            -
+              name: vmSize
+            -
+              name: orchestratorVersion
               target: version
-
-            - name: enableAutoScaling
+            -
+              name: enableAutoScaling
               type: boolean
               target: autoScaling
-
-            - name: count
+            -
+              name: count
               metric: azurerm_managedclusters_aks_pool_size
               type: value
-
-            - name: minCount
+            -
+              name: minCount
               metric: azurerm_managedclusters_aks_pool_size_min
               type: value
-
-            - name: maxCount
+            -
+              name: maxCount
               metric: azurerm_managedclusters_aks_pool_size_max
-
-            - name: maxPods
+            -
+              name: maxPods
               metric: azurerm_managedclusters_aks_pool_maxpods
               type: value
-
-            - name: osDiskSizeGB
+            -
+              name: osDiskSizeGB
               metric: azurerm_managedclusters_aks_pool_os_disksize
               type: value
 
@@ -151,23 +160,24 @@ queries:
       | where type == "microsoft.compute/virtualmachinescalesets"
     value: 1
     fields:
-      - name: id
+      -
+        name: id
         target: resourceId
         type: id
-
-      - name: name
+      -
+        name: name
         target: cluster
-
-      - name: subscriptionId
-
-      - name: location
-
-      - name: type
+      -
+        name: subscriptionId
+      -
+        name: location
+      -
+        name: type
         target: provider
-
-      - name: resourceGroup
-
-      - name: sku
+      -
+        name: resourceGroup
+      -
+        name: sku
         metric: azurerm_vmss_capacity
         expand:
           fields:
@@ -175,8 +185,8 @@ queries:
               type: value
           defaultField:
             type: ignore
-
-      - name: tags
+      -
+        name: tags
         metric: azure_resource_tags
         expand:
           value: 1
@@ -186,34 +196,30 @@ queries:
     defaultField:
       type: ignore
 
-
-
-
-
-
-
   #########################################################
   ## Resource info with labels
   #########################################################
+  # be aware that this might exceed the row limit of ResourceGraph queries!
   - metric: azurerm_resource_info
     query: |-
       Resources
     value: 1
     fields:
-      - name: id
+      -
+        name: id
         target: resourceId
         type: id
-
-      - name: subscriptionId
-
-      - name: location
-
-      - name: type
+      -
+        name: subscriptionId
+      -
+        name: location
+      -
+        name: type
         target: provider
-
-      - name: resourceGroup
-
-      - name: tags
+      -
+        name: resourceGroup
+      -
+        name: tags
         metric: azure_resource_tags
         expand:
           value: 1
