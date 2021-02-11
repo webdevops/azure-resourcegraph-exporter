@@ -4,8 +4,6 @@ tagFields: &tagFields
 tagDefaultField: &defaultTagField
   type: ignore
 
-
-
 queries:
   #########################################################
   ## ResourceType count with SKU list
