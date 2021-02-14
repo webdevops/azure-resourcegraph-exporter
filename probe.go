@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+const (
+	RESOURCEGRAPH_QUERY_OPTIONS_TOP = 1000
+)
+
 func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
 
@@ -48,11 +52,6 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	resourcegraphClient := resourcegraph.NewWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
 	resourcegraphClient.Authorizer = AzureAuthorizer
 	resourcegraphClient.ResponseInspector = respondDecorator()
-
-	// Set options
-	RequestOptions := resourcegraph.QueryRequestOptions{
-		ResultFormat: "objectArray",
-	}
 
 	metricList := MetricList{}
 	metricList.Init()
@@ -89,35 +88,68 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 				queryConfig.Subscriptions = &defaultSubscriptions
 			}
 
-			// Create the query request
-			Request := resourcegraph.QueryRequest{
-				Subscriptions: queryConfig.Subscriptions,
-				Query:         &queryConfig.Query,
-				Options:       &RequestOptions,
+
+			requestQueryTop := int32(RESOURCEGRAPH_QUERY_OPTIONS_TOP)
+			requestQuerySkip := int32(0)
+
+			// Set options
+			RequestOptions := resourcegraph.QueryRequestOptions{
+				ResultFormat: "objectArray",
+				Top: &requestQueryTop,
+				Skip: &requestQuerySkip,
 			}
 
 			// Run the query and get the results
-			var results, queryErr = resourcegraphClient.Resources(ctx, Request)
-			if queryErr == nil {
-				contextLogger.Debug("parsing result")
-
-				if resultList, ok := results.Data.([]interface{}); ok {
-					for _, v := range resultList {
-						if resultRow, ok := v.(map[string]interface{}); ok {
-							for metricName, metric := range buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
-								metricList.Add(metricName, metric...)
-							}
-						}
-					}
+			resultTotalRecords := int32(0)
+			for {
+				// Create the query request
+				Request := resourcegraph.QueryRequest{
+					Subscriptions: queryConfig.Subscriptions,
+					Query:         &queryConfig.Query,
+					Options:       &RequestOptions,
 				}
 
-				contextLogger.Debug("metrics parsed")
-			} else {
-				contextLogger.Errorln(queryErr.Error())
-				http.Error(w, queryErr.Error(), http.StatusBadRequest)
+				var results, queryErr = resourcegraphClient.Resources(ctx, Request)
+				if results.TotalRecords != nil {
+					resultTotalRecords = int32(*results.TotalRecords)
+				}
+
+				if queryErr == nil {
+					contextLogger.Debug("parsing result")
+
+					if resultList, ok := results.Data.([]interface{}); ok {
+						// check if we got data, otherwise break the for loop
+						if len(resultList) == 0 {
+							break
+						}
+
+						for _, v := range resultList {
+							if resultRow, ok := v.(map[string]interface{}); ok {
+								for metricName, metric := range buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
+									metricList.Add(metricName, metric...)
+								}
+							}
+						}
+					} else {
+						// got invalid or empty data, skipping
+						break
+					}
+
+					contextLogger.Debug("metrics parsed")
+				} else {
+					contextLogger.Errorln(queryErr.Error())
+					http.Error(w, queryErr.Error(), http.StatusBadRequest)
+				}
+
+				*RequestOptions.Skip += requestQueryTop
+				if *RequestOptions.Skip >= resultTotalRecords {
+					break
+				}
 			}
 
-			prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(time.Since(startTime).Seconds())
+			elapsedTime := time.Since(startTime)
+			contextLogger.WithField("results", resultTotalRecords).Debugf("fetched %v results", resultTotalRecords)
+			prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(elapsedTime.Seconds())
 		}
 
 		// store to cache (if enabeld)
