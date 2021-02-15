@@ -88,15 +88,14 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 				queryConfig.Subscriptions = &defaultSubscriptions
 			}
 
-
 			requestQueryTop := int32(RESOURCEGRAPH_QUERY_OPTIONS_TOP)
 			requestQuerySkip := int32(0)
 
 			// Set options
 			RequestOptions := resourcegraph.QueryRequestOptions{
 				ResultFormat: "objectArray",
-				Top: &requestQueryTop,
-				Skip: &requestQuerySkip,
+				Top:          &requestQueryTop,
+				Skip:         &requestQuerySkip,
 			}
 
 			// Run the query and get the results
