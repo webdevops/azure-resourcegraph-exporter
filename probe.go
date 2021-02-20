@@ -75,11 +75,11 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	if executeQuery {
 		w.Header().Add("X-metrics-cached", "false")
 		for _, queryConfig := range Config.Queries {
-			startTime := time.Now()
 			// check if query matches module name
 			if queryConfig.Module != moduleName {
 				continue
 			}
+			startTime := time.Now()
 
 			contextLogger := probeLogger.WithField("metric", queryConfig.Metric)
 			contextLogger.Debug("starting query")
@@ -107,6 +107,8 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 					Query:         &queryConfig.Query,
 					Options:       &RequestOptions,
 				}
+
+				prometheusQueryRequestCount.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Inc()
 
 				var results, queryErr = resourcegraphClient.Resources(ctx, Request)
 				if results.TotalRecords != nil {
@@ -149,6 +151,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			elapsedTime := time.Since(startTime)
 			contextLogger.WithField("results", resultTotalRecords).Debugf("fetched %v results", resultTotalRecords)
 			prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(elapsedTime.Seconds())
+			prometheusQueryResults.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Set(float64(resultTotalRecords))
 		}
 
 		// store to cache (if enabeld)
