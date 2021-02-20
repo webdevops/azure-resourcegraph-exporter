@@ -48,10 +48,12 @@ HTTP Endpoints
 Global metrics
 --------------
 
-| Metric                              | Description                                                                    |
-|-------------------------------------|--------------------------------------------------------------------------------|
-| `azure_resourcegraph_querytime`     | Summary metric about query execution time                                      |
-| `azure_resourcegraph_ratelimit`     | Current ratelimit value from the Azure API                                     |
+| Metric                               | Description                                                                    |
+|--------------------------------------|--------------------------------------------------------------------------------|
+| `azure_resourcegraph_query_time`     | Summary metric about query execution time (incl. all subqueries)               |
+| `azure_resourcegraph_query_results`  | Number of results from query                                                   |
+| `azure_resourcegraph_query_requests` | Count of requests (eg paged subqueries) per query                              |
+| `azure_resourcegraph_ratelimit`      | Current rate limit value from the Azure API                                    |
 
 
 Example

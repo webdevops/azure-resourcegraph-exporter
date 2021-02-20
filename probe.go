@@ -108,7 +108,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 					Options:       &RequestOptions,
 				}
 
-				prometheusQueryRequestCount.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Inc()
+				prometheusQueryRequests.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Inc()
 
 				var results, queryErr = resourcegraphClient.Resources(ctx, Request)
 				if results.TotalRecords != nil {

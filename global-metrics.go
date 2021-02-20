@@ -3,10 +3,10 @@ package main
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
-	prometheusQueryTime         *prometheus.SummaryVec
-	prometheusQueryResults      *prometheus.GaugeVec
-	prometheusQueryRequestCount *prometheus.CounterVec
-	prometheusRatelimit         *prometheus.GaugeVec
+	prometheusQueryTime     *prometheus.SummaryVec
+	prometheusQueryResults  *prometheus.GaugeVec
+	prometheusQueryRequests *prometheus.CounterVec
+	prometheusRatelimit     *prometheus.GaugeVec
 )
 
 func initGlobalMetrics() {
@@ -34,9 +34,9 @@ func initGlobalMetrics() {
 	)
 	prometheus.MustRegister(prometheusQueryResults)
 
-	prometheusQueryRequestCount = prometheus.NewCounterVec(
+	prometheusQueryRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "azure_resourcegraph_query_request_count",
+			Name: "azure_resourcegraph_query_requests",
 			Help: "Azure ResourceGraph query request count",
 		},
 		[]string{
@@ -44,7 +44,7 @@ func initGlobalMetrics() {
 			"metric",
 		},
 	)
-	prometheus.MustRegister(prometheusQueryRequestCount)
+	prometheus.MustRegister(prometheusQueryRequests)
 
 	prometheusRatelimit = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
