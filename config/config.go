@@ -10,6 +10,22 @@ import (
 	"strings"
 )
 
+const (
+	MetricFieldTypeExpand = "expand"
+	MetricFieldTypeIgnore = "ignore"
+	MetricFieldTypeId = "id"
+	MetricFieldTypeValue = "value"
+	MetricFieldTypeDefault = "string"
+	MetricFieldTypeBool = "bool"
+	MetricFieldTypeBoolean = "boolean"
+
+	MetricFieldFilterToLower = "tolower"
+	MetricFieldFilterToUpper = "toupper"
+	MetricFieldFilterToTitle = "totitle"
+	MetricFieldFilterToRegexp = "regexp"
+	MetricFieldFilterToUnixtime = "tounixtime"
+)
+
 type (
 	Config struct {
 		Queries []ConfigQuery `yaml:"queries"`
@@ -99,13 +115,13 @@ func (c *ConfigQueryMetricField) Validate() error {
 	}
 
 	switch c.GetType() {
-	case "expand":
-	case "string":
-	case "boolean":
-	case "bool":
-	case "id":
-	case "value":
-	case "ignore":
+	case MetricFieldTypeDefault:
+	case MetricFieldTypeBool:
+	case MetricFieldTypeBoolean:
+	case MetricFieldTypeExpand:
+	case MetricFieldTypeId:
+	case MetricFieldTypeValue:
+	case MetricFieldTypeIgnore:
 	default:
 		return fmt.Errorf("field \"%s\": unsupported type \"%s\"", c.Name, c.GetType())
 	}
@@ -123,7 +139,7 @@ func (c *ConfigQueryMetricField) GetType() (ret string) {
 	ret = strings.ToLower(c.Type)
 
 	if ret == "" {
-		ret = "string"
+		ret = MetricFieldTypeDefault
 	}
 
 	return
@@ -135,10 +151,10 @@ func (c *ConfigQueryMetricFieldFilter) Validate() error {
 	}
 
 	switch strings.ToLower(c.Type) {
-	case "tolower":
-	case "toupper":
-	case "totitle":
-	case "regexp":
+	case MetricFieldFilterToLower:
+	case MetricFieldFilterToUpper:
+	case MetricFieldFilterToTitle:
+	case MetricFieldFilterToRegexp:
 		if c.RegExp == "" {
 			return errors.New("no regexp for filter set")
 		}
@@ -189,7 +205,7 @@ func (f *ConfigQueryMetricField) GetSourceField() (ret string) {
 }
 
 func (f *ConfigQueryMetricField) IsExpand() bool {
-	return f.Type == "expand" || f.Expand != nil
+	return f.Type == MetricFieldTypeExpand || f.Expand != nil
 }
 
 func (f *ConfigQueryMetricField) IsSourceField() bool {
@@ -197,15 +213,15 @@ func (f *ConfigQueryMetricField) IsSourceField() bool {
 }
 
 func (f *ConfigQueryMetricField) IsTypeIgnore() bool {
-	return f.GetType() == "ignore"
+	return f.GetType() == MetricFieldTypeIgnore
 }
 
 func (f *ConfigQueryMetricField) IsTypeId() bool {
-	return f.GetType() == "id"
+	return f.GetType() == MetricFieldTypeId
 }
 
 func (f *ConfigQueryMetricField) IsTypeValue() bool {
-	return f.GetType() == "value"
+	return f.GetType() == MetricFieldTypeValue
 }
 
 func (f *ConfigQueryMetricField) GetTargetFieldName(sourceName string) (ret string) {
@@ -222,9 +238,9 @@ func (f *ConfigQueryMetricField) TransformString(value string) (ret string) {
 	ret = value
 
 	switch f.Type {
-	case "bool":
+	case MetricFieldTypeBoolean:
 		fallthrough
-	case "boolean":
+	case MetricFieldTypeBool:
 		switch strings.ToLower(ret) {
 		case "1":
 			fallthrough
@@ -238,15 +254,15 @@ func (f *ConfigQueryMetricField) TransformString(value string) (ret string) {
 	}
 	for _, filter := range f.Filters {
 		switch strings.ToLower(filter.Type) {
-		case "tolower":
+		case MetricFieldFilterToLower:
 			ret = strings.ToLower(ret)
-		case "toupper":
+		case MetricFieldFilterToUpper:
 			ret = strings.ToUpper(ret)
-		case "totitle":
+		case MetricFieldFilterToTitle:
 			ret = strings.ToTitle(ret)
-		case "tounixtime":
+		case MetricFieldFilterToUnixtime:
 			ret = convertStringToUnixtime(ret)
-		case "regexp":
+		case MetricFieldFilterToRegexp:
 			if filter.parsedRegexp == nil {
 				filter.parsedRegexp = regexp.MustCompile(filter.RegExp)
 			}
