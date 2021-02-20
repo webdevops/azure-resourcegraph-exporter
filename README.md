@@ -53,7 +53,7 @@ Global metrics
 | `azure_resourcegraph_query_time`     | Summary metric about query execution time (incl. all subqueries)               |
 | `azure_resourcegraph_query_results`  | Number of results from query                                                   |
 | `azure_resourcegraph_query_requests` | Count of requests (eg paged subqueries) per query                              |
-| `azure_resourcegraph_ratelimit`      | Current rate limit value from the Azure API                                    |
+| `azure_resourcegraph_ratelimit`      | Current rate limit value from the Azure ResourceGraph API                      |
 
 
 Example
