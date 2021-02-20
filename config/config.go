@@ -250,7 +250,7 @@ func (f *ConfigQueryMetricField) TransformString(value string) (ret string) {
 			if filter.parsedRegexp == nil {
 				filter.parsedRegexp = regexp.MustCompile(filter.RegExp)
 			}
-			ret = filter.parsedRegexp.ReplaceAllString(value, filter.Replacement)
+			ret = filter.parsedRegexp.ReplaceAllString(ret, filter.Replacement)
 		}
 	}
 	return
