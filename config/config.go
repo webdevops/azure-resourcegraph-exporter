@@ -11,18 +11,18 @@ import (
 )
 
 const (
-	MetricFieldTypeExpand = "expand"
-	MetricFieldTypeIgnore = "ignore"
-	MetricFieldTypeId = "id"
-	MetricFieldTypeValue = "value"
+	MetricFieldTypeExpand  = "expand"
+	MetricFieldTypeIgnore  = "ignore"
+	MetricFieldTypeId      = "id"
+	MetricFieldTypeValue   = "value"
 	MetricFieldTypeDefault = "string"
-	MetricFieldTypeBool = "bool"
+	MetricFieldTypeBool    = "bool"
 	MetricFieldTypeBoolean = "boolean"
 
-	MetricFieldFilterToLower = "tolower"
-	MetricFieldFilterToUpper = "toupper"
-	MetricFieldFilterToTitle = "totitle"
-	MetricFieldFilterToRegexp = "regexp"
+	MetricFieldFilterToLower    = "tolower"
+	MetricFieldFilterToUpper    = "toupper"
+	MetricFieldFilterToTitle    = "totitle"
+	MetricFieldFilterToRegexp   = "regexp"
 	MetricFieldFilterToUnixtime = "tounixtime"
 )
 
