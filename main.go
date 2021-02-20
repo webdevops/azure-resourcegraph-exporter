@@ -138,7 +138,7 @@ func initAzureConnection() {
 		AzureSubscriptions = listResult.Values()
 
 		if len(AzureSubscriptions) == 0 {
-			log.Panic("no Azure Subscriptions found via auto detection, does this ServicePrincipal have read permissions to the subcriptions?")
+			log.Panic("no Azure Subscriptions found via auto detection, does this ServicePrincipal have read permissions to the subscriptions?")
 		}
 	} else {
 		// fixed subscription list
