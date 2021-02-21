@@ -195,7 +195,7 @@ func respondDecorator() autorest.RespondDecorator {
 		return autorest.ResponderFunc(func(r *http.Response) error {
 			ratelimit := r.Header.Get("x-ms-user-quota-remaining")
 			if v, err := strconv.ParseInt(ratelimit, 10, 64); err == nil {
-				prometheusRatelimit.WithLabelValues().Set(float64(v))
+				prometheusRateLimit.WithLabelValues().Set(float64(v))
 			}
 			return nil
 		})

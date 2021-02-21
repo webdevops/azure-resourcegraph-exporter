@@ -251,20 +251,6 @@ func (m *testingMetricList) row(row int) *testingMetricRow {
 	return &testingMetricRow{t: m.t, row: m.list[row], name: m.name}
 }
 
-func (m *testingMetricRow) assertLabelCount(count int) {
-	m.t.Helper()
-	if val := len(m.row.Labels); val != count {
-		m.t.Fatalf(`metric row "%v" has wrong label count; expected: "%v", got: "%v"`, m.name, count, val)
-	}
-}
-
-func (m *testingMetricRow) assertLabelNotExists(name string) {
-	m.t.Helper()
-	if _, exists := m.row.Labels[name]; exists {
-		m.t.Fatalf(`metric row "%v" has wrong "%v" label, should not exists`, m.name, name)
-	}
-}
-
 func (m *testingMetricRow) assertLabels(labels ...string) {
 	m.t.Helper()
 
