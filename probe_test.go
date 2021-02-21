@@ -6,6 +6,25 @@ import (
 	"testing"
 )
 
+type (
+	testingMetricResult struct {
+		t *testing.T
+		list map[string][]MetricRow
+	}
+
+	testingMetricList struct {
+		t *testing.T
+		name string
+		list []MetricRow
+	}
+
+	testingMetricRow struct {
+		t *testing.T
+		name string
+		row MetricRow
+	}
+)
+
 func TestMetricRowParsing(t *testing.T) {
 	result := `{
 "name": "foobar",
@@ -52,41 +71,21 @@ func TestMetricRowParsing(t *testing.T) {
 		t.Fatalf(`metric count not valid, expected: %v, found: %v`, 2, len(metricList))
 	}
 
-	if _, exists := metricList["azure_testing"]; !exists {
-		t.Fatalf(`expected metric "azure_testing" not found`)
-	}
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricCount(2)
 
-	if _, exists := metricList["azure_testing_resources"]; !exists {
-		t.Fatalf(`expected metric "azure_testing_resources" not found`)
-	}
+	metricTestSuite.assertMetric("azure_testing")
+	metricTestSuite.metric("azure_testing").assertRowCount(1)
+	metricTestSuite.metric("azure_testing").row(0).assertLabelCount(1)
+	metricTestSuite.metric("azure_testing").row(0).assertLabelNotExists("should-not-exists")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing").row(0).assertValue(20)
 
-	if len := len(metricList["azure_testing"]); len != 1 {
-		t.Fatalf(`metric row count for azure_testing not valid, expected: %v, found: %v`, 1, len)
-	}
-
-	if val := metricList["azure_testing"][0].Labels["id"]; val != "foobar" {
-		t.Fatalf(`metric row azure_testing has wrong "id" label, expected: %v, found: %v`, "foobar", val)
-	}
-
-	if _, exists := metricList["azure_testing"][0].Labels["should-not-exists"]; exists {
-		t.Fatalf(`metric row azure_testing has wrong "should-not-exists" label, should not exists`)
-	}
-
-	if val := metricList["azure_testing"][0].Value; val != 20 {
-		t.Fatalf(`metric row azure_testing has wrong value, expected: %v, found: %v`, 20, val)
-	}
-
-	if len := len(metricList["azure_testing_resources"][0].Labels); len != 1 {
-		t.Fatalf(`metric row count for azure_testing_resources has too many labels, expected: %v, found: %v`, 1, len)
-	}
-
-	if val := metricList["azure_testing_resources"][0].Labels["id"]; val != "foobar" {
-		t.Fatalf(`metric row azure_testing_resources has wrong "id" label, expected: %v, found: %v`, "foobar", val)
-	}
-
-	if val := metricList["azure_testing_resources"][0].Value; val != 13 {
-		t.Fatalf(`metric row azure_testing has wrong value, expected: %v, found: %v`, 13, val)
-	}
+	metricTestSuite.assertMetric("azure_testing_resources")
+	metricTestSuite.metric("azure_testing_resources").assertRowCount(1)
+	metricTestSuite.metric("azure_testing_resources").row(0).assertLabelCount(1)
+	metricTestSuite.metric("azure_testing_resources").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing_resources").row(0).assertValue(13)
 }
 
 func TestMetricRowParsingWithFilters(t *testing.T) {
@@ -141,7 +140,7 @@ func TestMetricRowParsingWithFilters(t *testing.T) {
 	}
 
 	queryConfig := config.ConfigQuery{
-		Metric: "azure_testing",
+		Metric: "formatter-test",
 		MetricConfig: config.ConfigQueryMetric{
 			Fields: azureTestingFields,
 			DefaultField: config.ConfigQueryMetricField{
@@ -157,23 +156,77 @@ func TestMetricRowParsingWithFilters(t *testing.T) {
 
 	metricList := buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
-	if val := metricList["azure_testing"][0].Labels["subscription"]; val != "xxxxxx-xxxxx-xxxxx-xxxxx" {
-		t.Fatalf(`metric row azure_testing_resources has wrong "subscription" label, expected: %v, found: %v`, "xxxxxx-xxxxx-xxxxx-xxxxx", val)
-	}
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricCount(1)
 
-	if val := metricList["azure_testing"][0].Labels["created"]; val != "1611145414" {
-		t.Fatalf(`metric row azure_testing_resources has wrong "subscription" label, expected: %v, found: %v`, "1611145414", val)
-	}
+	metricTestSuite.assertMetric("formatter-test")
+	metricTestSuite.metric("formatter-test").assertRowCount(1)
+	metricTestSuite.metric("formatter-test").row(0).assertLabelCount(5)
+	metricTestSuite.metric("formatter-test").row(0).assertLabel("subscription", "xxxxxx-xxxxx-xxxxx-xxxxx")
+	metricTestSuite.metric("formatter-test").row(0).assertLabel("created", "1611145414")
+	metricTestSuite.metric("formatter-test").row(0).assertLabel("invalid", "false")
+	metricTestSuite.metric("formatter-test").row(0).assertLabel("valid", "true")
+	metricTestSuite.metric("formatter-test").row(0).assertValue(1611145414)
+}
 
-	if val := metricList["azure_testing"][0].Value; val != 1611145414 {
-		t.Fatalf(`metric row azure_testing_resources has wrong value, expected: %v, found: %v`, 1611145414, val)
-	}
 
-	if val := metricList["azure_testing"][0].Labels["invalid"]; val != "false" {
-		t.Fatalf(`metric row azure_testing_resources has wrong "invalid" label, expected: %v, found: %v`, "false", val)
-	}
-
-	if val := metricList["azure_testing"][0].Labels["valid"]; val != "true" {
-		t.Fatalf(`metric row azure_testing_resources has wrong "valid" label, expected: %v, found: %v`, "true", val)
+func (m *testingMetricResult) assertMetricCount(count int) {
+	if val := len(m.list); val != count {
+		m.t.Fatalf(`metric count not valid, expected: %v, found: %v`, count, val)
 	}
 }
+
+func (m *testingMetricResult) assertMetric(name string) {
+	if _, exists := m.list[name]; !exists {
+		m.t.Fatalf(`expected metric "%v" not found`, name)
+	}
+}
+
+func (m *testingMetricResult) metric(name string) *testingMetricList {
+	return &testingMetricList{t: m.t, list: m.list[name], name: name}
+}
+
+func (m *testingMetricList) assertRowCount(count int) {
+	if val := len(m.list); val != count {
+		m.t.Fatalf(`metric row count for "%v" not valid, expected: %v, found: %v`, m.name, count, val)
+	}
+}
+
+func (m *testingMetricList) row(row int) *testingMetricRow {
+	return &testingMetricRow{t: m.t, row: m.list[row], name: m.name}
+}
+
+func (m *testingMetricRow) assertLabelCount(count int) {
+	if val := len(m.row.Labels); val != count {
+		m.t.Fatalf(`metric row "%v" has wrong label count; expected: "%v", got: "%v"`, m.name, count, val)
+	}
+}
+
+func (m *testingMetricRow) assertLabelNotExists(name string) {
+	if _, exists := m.row.Labels[name]; exists {
+		m.t.Fatalf(`metric row "%v" has wrong "%v" label, should not exists`, m.name, name)
+	}
+}
+
+func (m *testingMetricRow) assertLabelExists(labelName string) {
+	if _, exists := m.row.Labels[labelName]; !exists {
+		m.t.Fatalf(`metric row "%v" has wrong "%v" label, should exists`, m.name, labelName)
+	}
+}
+
+func (m *testingMetricRow) assertLabel(labelName, labelValue string) {
+	if _, exists := m.row.Labels[labelName]; !exists {
+		m.t.Fatalf(`metric row "%v" has wrong "%v" label, should exists`, m.name, labelName)
+	}
+
+	if val := m.row.Labels[labelName]; val != labelValue {
+		m.t.Fatalf(`metric row "%v" has wrong label "%v" value; expected: "%v", got: "%v"`, m.name, labelName, labelValue, val)
+	}
+}
+
+func (m *testingMetricRow) assertValue(metricValue float64) {
+	if val := m.row.Value; val != metricValue {
+		m.t.Fatalf(`metric row "%v" has wrong metric value; expected: "%v", got: "%v"`, m.name, metricValue, val)
+	}
+}
+
