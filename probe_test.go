@@ -205,7 +205,7 @@ func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]int
 	t.Helper()
 	ret := map[string]interface{}{}
 	if err := json.Unmarshal([]byte(data), &ret); err != nil {
-		t.Fatalf(`unable to unmarshal json: %v`, err)
+		t.Fatalf(`unable to unmarshal resourcegraph result json: %v`, err)
 	}
 	return ret
 }
@@ -214,7 +214,7 @@ func parseMetricConfig(t *testing.T, data string) config.ConfigQuery {
 	t.Helper()
 	ret := config.ConfigQuery{}
 	if err := yaml.Unmarshal([]byte(data), &ret); err != nil {
-		t.Fatalf(`unable to unmarshal json: %v`, err)
+		t.Fatalf(`unable to unmarshal query configuration yaml: %v`, err)
 	}
 	return ret
 }
@@ -226,10 +226,12 @@ func (m *testingMetricResult) assertMetricNames(count int) {
 	}
 }
 
-func (m *testingMetricResult) assertMetric(name string) {
+func (m *testingMetricResult) assertMetric(names ...string) {
 	m.t.Helper()
-	if _, exists := m.list[name]; !exists {
-		m.t.Fatalf(`expected metric "%v" not found`, name)
+	for _, name := range names {
+		if _, exists := m.list[name]; !exists {
+			m.t.Fatalf(`expected metric "%v" not found`, name)
+		}
 	}
 }
 
@@ -247,7 +249,6 @@ func (m *testingMetricList) assertRowCount(count int) {
 
 func (m *testingMetricList) row(row int) *testingMetricRow {
 	m.t.Helper()
-
 	return &testingMetricRow{t: m.t, row: m.list[row], name: m.name}
 }
 
