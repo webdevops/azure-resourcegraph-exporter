@@ -41,7 +41,6 @@ type (
 
 	ConfigQueryMetric struct {
 		Value        *float64                 `yaml:"value"`
-		AutoExpand   bool                     `yaml:"autoExpand"`
 		Fields       []ConfigQueryMetricField `yaml:"fields"`
 		DefaultField ConfigQueryMetricField   `yaml:"defaultField"`
 	}
@@ -167,10 +166,6 @@ func (c *ConfigQueryMetricFieldFilter) Validate() error {
 }
 
 func (m *ConfigQueryMetric) IsExpand(field string) bool {
-	if m.AutoExpand {
-		return true
-	}
-
 	for _, fieldConfig := range m.Fields {
 		if fieldConfig.Name == field {
 			if fieldConfig.IsExpand() {

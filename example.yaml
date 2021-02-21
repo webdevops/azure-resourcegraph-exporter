@@ -8,13 +8,6 @@ queries:
       Resources
       | top 50 by name desc
 
-    ## automatically parse sub sturctures to metrics
-    ## if no special field config is used the
-    ## target metric name will be:
-    ##   {metricname}_{field}
-    ## this setting is NOT recursive
-    autoExpand: true
-
     ## default value for metric
     ## eg for static metrics like informational metrics
     value: 1
@@ -55,8 +48,6 @@ queries:
       - name: properties
         metric: azure_resources_props
         expand:
-          ## also expand field values inside properties
-          autoExpand: true
           fields:
             ## ignore this field
             - name: enableRbacAuthorization
