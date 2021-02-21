@@ -9,20 +9,20 @@ import (
 
 type (
 	testingMetricResult struct {
-		t *testing.T
+		t    *testing.T
 		list map[string][]MetricRow
 	}
 
 	testingMetricList struct {
-		t *testing.T
+		t    *testing.T
 		name string
 		list []MetricRow
 	}
 
 	testingMetricRow struct {
-		t *testing.T
+		t    *testing.T
 		name string
-		row MetricRow
+		row  MetricRow
 	}
 )
 
@@ -33,7 +33,6 @@ func TestMetricRowParsing(t *testing.T) {
 "resources": 13,
 "should-not-exists": "testing"
 }`)
-
 
 	queryConfig := parseMetricConfig(t, `
 metric: azure_testing
@@ -57,7 +56,7 @@ defaultField:
 	}
 
 	metricTestSuite := testingMetricResult{t: t, list: metricList}
-	metricTestSuite.assertMetricCount(2)
+	metricTestSuite.assertMetricNames(2)
 
 	metricTestSuite.assertMetric("azure_testing")
 	metricTestSuite.metric("azure_testing").assertRowCount(1)
@@ -110,7 +109,7 @@ defaultField:
 	metricList := buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
 	metricTestSuite := testingMetricResult{t: t, list: metricList}
-	metricTestSuite.assertMetricCount(1)
+	metricTestSuite.assertMetricNames(1)
 
 	metricTestSuite.assertMetric("formatter-test")
 	metricTestSuite.metric("formatter-test").assertRowCount(1)
@@ -120,6 +119,87 @@ defaultField:
 	metricTestSuite.metric("formatter-test").row(0).assertLabel("invalid", "false")
 	metricTestSuite.metric("formatter-test").row(0).assertLabel("valid", "true")
 	metricTestSuite.metric("formatter-test").row(0).assertValue(1611145414)
+}
+
+func TestMetricRowParsingWithExpand(t *testing.T) {
+	resultRow := parseResourceGraphJsonToResultRow(t, `{
+"id": "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename",
+"properties": {
+  "firewallActive": true,
+  "sku": {
+    "name": "Free",
+    "capacity": 2
+  },
+  "pools": [
+    {
+      "name": "pool1",
+      "instances": 15
+    },{
+      "name": "pool2"
+    }
+  ]
+}
+}`)
+
+	queryConfig := parseMetricConfig(t, `
+metric: resource
+fields:
+- name: id
+  type: id
+- name: properties
+  expand:
+    value: 2
+    fields:
+    - name: sku
+      expand:
+        fields:
+        - name: capacity
+          type: value
+    - name: pools
+      expand:
+        value: 0
+        fields:
+        - name: name
+        - name: instances
+          type: value
+`)
+
+	metricList := buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricNames(4)
+
+	metricTestSuite.assertMetric("resource")
+	metricTestSuite.metric("resource").assertRowCount(1)
+	metricTestSuite.metric("resource").row(0).assertLabelCount(1)
+	metricTestSuite.metric("resource").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
+	metricTestSuite.metric("resource").row(0).assertValue(1)
+	metricTestSuite.metric("resource").row(0).assertValue(1)
+
+	metricTestSuite.assertMetric("resource_properties")
+	metricTestSuite.metric("resource_properties").assertRowCount(1)
+	metricTestSuite.metric("resource_properties").row(0).assertLabelCount(2)
+	metricTestSuite.metric("resource_properties").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
+	metricTestSuite.metric("resource_properties").row(0).assertLabel("firewallActive", "true")
+	metricTestSuite.metric("resource_properties").row(0).assertValue(2)
+
+	metricTestSuite.assertMetric("resource_properties_sku")
+	metricTestSuite.metric("resource_properties_sku").assertRowCount(1)
+	metricTestSuite.metric("resource_properties_sku").row(0).assertLabelCount(2)
+	metricTestSuite.metric("resource_properties_sku").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
+	metricTestSuite.metric("resource_properties_sku").row(0).assertLabel("name", "Free")
+	metricTestSuite.metric("resource_properties_sku").row(0).assertValue(2)
+
+	metricTestSuite.assertMetric("resource_properties_pools")
+	metricTestSuite.metric("resource_properties_pools").assertRowCount(2)
+	metricTestSuite.metric("resource_properties_pools").row(0).assertLabelCount(2)
+	metricTestSuite.metric("resource_properties_pools").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
+	metricTestSuite.metric("resource_properties_pools").row(0).assertLabel("name", "pool1")
+	metricTestSuite.metric("resource_properties_pools").row(0).assertValue(15)
+	metricTestSuite.metric("resource_properties_pools").row(0).assertLabelCount(2)
+	metricTestSuite.metric("resource_properties_pools").row(1).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
+	metricTestSuite.metric("resource_properties_pools").row(1).assertLabel("name", "pool2")
+	metricTestSuite.metric("resource_properties_pools").row(1).assertValue(0)
 }
 
 func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]interface{} {
@@ -140,10 +220,10 @@ func parseMetricConfig(t *testing.T, data string) config.ConfigQuery {
 	return ret
 }
 
-func (m *testingMetricResult) assertMetricCount(count int) {
+func (m *testingMetricResult) assertMetricNames(count int) {
 	m.t.Helper()
 	if val := len(m.list); val != count {
-		m.t.Fatalf(`metric count not valid, expected: %v, found: %v`, count, val)
+		m.t.Fatalf(`metric name count is not valid, expected: %v, found: %v`, count, val)
 	}
 }
 
@@ -189,14 +269,14 @@ func (m *testingMetricRow) assertLabelNotExists(name string) {
 func (m *testingMetricRow) assertLabelExists(labelName string) {
 	m.t.Helper()
 	if _, exists := m.row.Labels[labelName]; !exists {
-		m.t.Fatalf(`metric row "%v" has wrong "%v" label, should exists`, m.name, labelName)
+		m.t.Fatalf(`metric row "%v" misses "%v" label, should exists`, m.name, labelName)
 	}
 }
 
 func (m *testingMetricRow) assertLabel(labelName, labelValue string) {
 	m.t.Helper()
 	if _, exists := m.row.Labels[labelName]; !exists {
-		m.t.Fatalf(`metric row "%v" has wrong "%v" label, should exists`, m.name, labelName)
+		m.t.Fatalf(`metric row "%v" misses "%v" label, should exists`, m.name, labelName)
 	}
 
 	if val := m.row.Labels[labelName]; val != labelValue {
@@ -210,4 +290,3 @@ func (m *testingMetricRow) assertValue(metricValue float64) {
 		m.t.Fatalf(`metric row "%v" has wrong metric value; expected: "%v", got: "%v"`, m.name, metricValue, val)
 	}
 }
-
