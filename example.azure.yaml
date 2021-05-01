@@ -51,6 +51,7 @@ queries:
         name: name
       -
         name: subscriptionId
+        target: subscriptionID
         type: id
     defaultField:
       type: ignore
@@ -72,6 +73,7 @@ queries:
         type: id
       -
         name: subscriptionId
+        target: subscriptionID
         type: id
       -
         name: resourceCount
@@ -112,13 +114,14 @@ queries:
     fields:
       -
         name: id
-        target: resourceId
+        target: resourceID
         type: id
       -
         name: name
         target: cluster
       -
         name: subscriptionId
+        target: subscriptionID
       -
         name: location
       -
@@ -130,7 +133,7 @@ queries:
         name: kubernetesVersion
       -
         name: tags
-        metric: azure_resource_tags
+        metric: azurerm_managedclusters_tags
         expand:
           value: 1
           fields: *tagFields
@@ -192,13 +195,14 @@ queries:
     fields:
       -
         name: id
-        target: resourceId
+        target: resourceID
         type: id
       -
         name: name
         target: cluster
       -
         name: subscriptionId
+        target: subscriptionID
       -
         name: location
       -
@@ -217,7 +221,7 @@ queries:
             type: ignore
       -
         name: tags
-        metric: azure_resource_tags
+        metric: azurerm_vmss_tags
         expand:
           value: 1
           fields: *tagFields
@@ -238,10 +242,11 @@ queries:
     fields:
       -
         name: id
-        target: resourceId
+        target: resourceID
         type: id
       -
         name: subscriptionId
+        target: subscriptionID
       -
         name: location
       -
