@@ -1,4 +1,4 @@
-package main
+package kusto
 
 import (
 	"encoding/json"

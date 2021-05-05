@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"github.com/webdevops/azure-resourcegraph-exporter/config"
+	"github.com/webdevops/azure-resourcegraph-exporter/kusto"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,7 +52,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	resourcegraphClient.Authorizer = AzureAuthorizer
 	resourcegraphClient.ResponseInspector = respondDecorator()
 
-	metricList := MetricList{}
+	metricList := kusto.MetricList{}
 	metricList.Init()
 
 	// check if value is cached
@@ -126,7 +125,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 						for _, v := range resultList {
 							if resultRow, ok := v.(map[string]interface{}); ok {
-								for metricName, metric := range buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
+								for metricName, metric := range kusto.BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
 									metricList.Add(metricName, metric...)
 								}
 							}
@@ -202,113 +201,3 @@ func respondDecorator() autorest.RespondDecorator {
 	}
 }
 
-func buildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetric, row map[string]interface{}) (list map[string][]MetricRow) {
-	list = map[string][]MetricRow{}
-	idFieldList := map[string]string{}
-
-	mainMetrics := map[string]*MetricRow{}
-	mainMetrics[name] = NewMetricRow()
-
-	fieldConfigMap := metricConfig.GetFieldConfigMap()
-
-	// add default value to main metric (if set)
-	if metricConfig.Value != nil {
-		mainMetrics[name].Value = *metricConfig.Value
-	}
-
-	// main metric
-	for fieldName, rowValue := range row {
-		if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
-			// field configuration available
-			for _, fieldConfig := range fieldConfList {
-				if fieldConfig.IsTypeIgnore() {
-					continue
-				}
-
-				if fieldConfig.IsExpand() {
-					continue
-				}
-
-				if fieldConfig.Metric != "" {
-					if _, ok := mainMetrics[fieldConfig.Metric]; !ok {
-						mainMetrics[fieldConfig.Metric] = NewMetricRow()
-					}
-				} else {
-					fieldConfig.Metric = name
-				}
-
-				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, mainMetrics[fieldConfig.Metric])
-
-				if fieldConfig.IsTypeId() {
-					labelName := fieldConfig.GetTargetFieldName(fieldName)
-					if _, ok := mainMetrics[name].Labels[labelName]; ok {
-						idFieldList[labelName] = mainMetrics[name].Labels[labelName]
-					}
-				}
-			}
-		} else {
-			// no field config, fall back to "defaultField"
-			fieldConfig := metricConfig.DefaultField
-			if !fieldConfig.IsTypeIgnore() {
-				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, mainMetrics[name])
-			}
-		}
-	}
-
-	// sub metrics
-	for fieldName, rowValue := range row {
-		if !metricConfig.IsExpand(fieldName) {
-			continue
-		}
-
-		for _, rowValue := range convertSubMetricInterfaceToArray(rowValue) {
-			if v, ok := rowValue.(map[string]interface{}); ok {
-				if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
-					for _, fieldConfig := range fieldConfList {
-						if fieldConfig.IsTypeIgnore() {
-							continue
-						}
-
-						// add fieldname to metric if no custom metric is set
-						if fieldConfig.Metric == "" {
-							fieldConfig.Metric = fmt.Sprintf("%s_%s", name, fieldName)
-						}
-
-						subMetricConfig := config.ConfigQueryMetric{}
-						if fieldConfig.Expand != nil {
-							subMetricConfig = *fieldConfig.Expand
-						}
-
-						subMetricList := buildPrometheusMetricList(fieldConfig.Metric, subMetricConfig, v)
-
-						for subMetricName, subMetricList := range subMetricList {
-							if _, ok := list[subMetricName]; !ok {
-								list[subMetricName] = []MetricRow{}
-							}
-							list[subMetricName] = append(list[subMetricName], subMetricList...)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// add main metrics
-	for metricName, metricRow := range mainMetrics {
-		if _, ok := list[metricName]; !ok {
-			list[metricName] = []MetricRow{}
-		}
-		list[metricName] = append(list[metricName], *metricRow)
-	}
-
-	// add id labels
-	for metricName := range list {
-		for row := range list[metricName] {
-			for idLabel, idValue := range idFieldList {
-				list[metricName][row].Labels[idLabel] = idValue
-			}
-		}
-	}
-
-	return
-}

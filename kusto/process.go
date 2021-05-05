@@ -1,4 +1,4 @@
-package main
+package kusto
 
 import (
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
