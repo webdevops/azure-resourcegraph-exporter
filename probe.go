@@ -37,6 +37,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 		} else {
 			probeLogger.Errorln(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 	}
 
@@ -139,6 +140,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 				} else {
 					contextLogger.Errorln(queryErr.Error())
 					http.Error(w, queryErr.Error(), http.StatusBadRequest)
+					return
 				}
 
 				*RequestOptions.Skip += requestQueryTop
