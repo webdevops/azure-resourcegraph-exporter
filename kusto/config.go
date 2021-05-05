@@ -36,6 +36,7 @@ type (
 		Metric        string            `yaml:"metric"`
 		Module        string            `yaml:"module"`
 		Query         string            `yaml:"query"`
+		Timespan      *string           `yaml:"timespan"`
 		Subscriptions *[]string         `yaml:"subscriptions"`
 	}
 
