@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
+	"github.com/webdevops/azure-resourcegraph-exporter/kusto"
 	"net/http"
 	"os"
 	"path"
@@ -28,7 +29,7 @@ var (
 	argparser *flags.Parser
 	opts      config.Opts
 
-	Config config.Config
+	Config kusto.Config
 
 	AzureAuthorizer    autorest.Authorizer
 	AzureSubscriptions []subscriptions.Subscription
@@ -109,7 +110,7 @@ func initArgparser() {
 }
 
 func readConfig() {
-	Config = config.NewConfig(opts.Config.Path)
+	Config = kusto.NewConfig(opts.Config.Path)
 
 	if err := Config.Validate(); err != nil {
 		log.Panic(err)

@@ -1,7 +1,6 @@
 package kusto
 
 import (
-	"github.com/webdevops/azure-resourcegraph-exporter/config"
 	"strconv"
 )
 
@@ -18,7 +17,7 @@ func convertSubMetricInterfaceToArray(val interface{}) []interface{} {
 	return ret
 }
 
-func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig config.ConfigQueryMetricField, metric *MetricRow) {
+func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig ConfigQueryMetricField, metric *MetricRow) {
 	labelName := fieldConfig.GetTargetFieldName(fieldName)
 
 	// upgrade to 64bit

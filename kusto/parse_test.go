@@ -2,7 +2,6 @@ package kusto
 
 import (
 	"encoding/json"
-	"github.com/webdevops/azure-resourcegraph-exporter/config"
 	"gopkg.in/yaml.v2"
 	"testing"
 )
@@ -210,9 +209,9 @@ func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]int
 	return ret
 }
 
-func parseMetricConfig(t *testing.T, data string) config.ConfigQuery {
+func parseMetricConfig(t *testing.T, data string) ConfigQuery {
 	t.Helper()
-	ret := config.ConfigQuery{}
+	ret := ConfigQuery{}
 	if err := yaml.Unmarshal([]byte(data), &ret); err != nil {
 		t.Fatalf(`unable to unmarshal query configuration yaml: %v`, err)
 	}

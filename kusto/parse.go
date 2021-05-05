@@ -2,10 +2,9 @@ package kusto
 
 import (
 	"fmt"
-	"github.com/webdevops/azure-resourcegraph-exporter/config"
 )
 
-func BuildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetric, row map[string]interface{}) (list map[string][]MetricRow) {
+func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row map[string]interface{}) (list map[string][]MetricRow) {
 	list = map[string][]MetricRow{}
 	idFieldList := map[string]string{}
 
@@ -77,7 +76,7 @@ func BuildPrometheusMetricList(name string, metricConfig config.ConfigQueryMetri
 							fieldConfig.Metric = fmt.Sprintf("%s_%s", name, fieldName)
 						}
 
-						subMetricConfig := config.ConfigQueryMetric{}
+						subMetricConfig := ConfigQueryMetric{}
 						if fieldConfig.Expand != nil {
 							subMetricConfig = *fieldConfig.Expand
 						}
