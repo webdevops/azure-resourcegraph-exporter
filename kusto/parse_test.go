@@ -49,7 +49,7 @@ defaultField:
   type: ignore
 `)
 
-	metricList := buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
 	if len(metricList) != 2 {
 		t.Fatalf(`metric count not valid, expected: %v, found: %v`, 2, len(metricList))
@@ -105,7 +105,7 @@ defaultField:
   type: ignore
 `)
 
-	metricList := buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
 	metricTestSuite := testingMetricResult{t: t, list: metricList}
 	metricTestSuite.assertMetricNames(1)
@@ -163,7 +163,7 @@ fields:
           type: value
 `)
 
-	metricList := buildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
 	metricTestSuite := testingMetricResult{t: t, list: metricList}
 	metricTestSuite.assertMetricNames(4)
