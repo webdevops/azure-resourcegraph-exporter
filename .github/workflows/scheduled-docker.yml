@@ -1,4 +1,4 @@
-name: "Release: docker"
+name: "Scheduled: docker"
 
 on:
   schedule:
