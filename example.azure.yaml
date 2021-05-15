@@ -146,6 +146,7 @@ queries:
           fields:
             -
               name: name
+              target: pool
               type: id
             -
               name: osType
