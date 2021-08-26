@@ -36,29 +36,44 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 					continue
 				}
 
+				var metricRow *MetricRow
+				isNewMetricRow := false
+
 				if fieldConfig.Metric != "" {
-					if _, ok := mainMetrics[fieldConfig.Metric]; !ok {
-						mainMetrics[fieldConfig.Metric] = NewMetricRow()
-					}
+					// field has own metric name, assuming individual metric row
+					isNewMetricRow = true
+					metricRow = NewMetricRow()
 				} else {
+					// field hasn't an own metric name, merge with main metric
 					fieldConfig.Metric = name
+					metricRow = mainMetrics[fieldConfig.Metric]
 				}
 
-				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, mainMetrics[fieldConfig.Metric])
+				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, metricRow)
 
 				// additional labels
 				for rowName, rowValue := range fieldConfig.Labels {
-					mainMetrics[fieldConfig.Metric].Labels[rowName] = rowValue
+					metricRow.Labels[rowName] = rowValue
 				}
 
 				// id labels
 				if fieldConfig.IsTypeId() {
 					labelName := fieldConfig.GetTargetFieldName(fieldName)
 					if _, ok := mainMetrics[name].Labels[labelName]; ok {
-						idFieldList[labelName] = mainMetrics[name].Labels[labelName]
+						idFieldList[labelName] = metricRow.Labels[labelName]
 					}
 				}
 
+				if isNewMetricRow {
+					// save as own metric
+					if _, ok := list[fieldConfig.Metric]; !ok {
+						list[fieldConfig.Metric] = []MetricRow{}
+					}
+					list[fieldConfig.Metric] = append(list[fieldConfig.Metric], *metricRow)
+				} else {
+					// set to main metric row
+					mainMetrics[fieldConfig.Metric] = metricRow
+				}
 			}
 		} else {
 			// no field config, fall back to "defaultField"
@@ -69,7 +84,7 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 		}
 	}
 
-	// sub metrics
+	// sub metrics (aka nested/expand structures)
 	for fieldName, rowValue := range row {
 		if !metricConfig.IsExpand(fieldName) {
 			continue

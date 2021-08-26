@@ -2,6 +2,7 @@ package kusto
 
 import (
 	"encoding/json"
+	"fmt"
 	"gopkg.in/yaml.v2"
 	"testing"
 )
@@ -29,182 +30,8 @@ func TestMetricRowParsing(t *testing.T) {
 	resultRow := parseResourceGraphJsonToResultRow(t, `{
 "name": "foobar",
 "count_": 20,
-"resources": 13,
-"should-not-exists": "testing"
-}`)
-
-	queryConfig := parseMetricConfig(t, `
-metric: azure_testing
-fields:
-- name: name
-  target: id
-  type: id
-- name: count_
-  type: value
-- name: resources
-  metric: azure_testing_resources
-  type: value
-defaultField:
-  type: ignore
-`)
-
-	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
-
-	if len(metricList) != 2 {
-		t.Fatalf(`metric count not valid, expected: %v, found: %v`, 2, len(metricList))
-	}
-
-	metricTestSuite := testingMetricResult{t: t, list: metricList}
-	metricTestSuite.assertMetricNames(2)
-
-	metricTestSuite.assertMetric("azure_testing")
-	metricTestSuite.metric("azure_testing").assertRowCount(1)
-	metricTestSuite.metric("azure_testing").row(0).assertLabels("id")
-	metricTestSuite.metric("azure_testing").row(0).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing").row(0).assertValue(20)
-
-	metricTestSuite.assertMetric("azure_testing_resources")
-	metricTestSuite.metric("azure_testing_resources").assertRowCount(1)
-	metricTestSuite.metric("azure_testing_resources").row(0).assertLabels("id")
-	metricTestSuite.metric("azure_testing_resources").row(0).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing_resources").row(0).assertValue(13)
-}
-
-func TestMetricRowParsingWithFilters(t *testing.T) {
-	resultRow := parseResourceGraphJsonToResultRow(t, `{
-"name": "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename",
-"created": "2021-01-20 12:23:34",
-"invalid": "0",
-"valid": "yes"
-}`)
-
-	queryConfig := parseMetricConfig(t, `
-metric: formatter-test
-fields:
-- name: name
-  target: id
-  type: id
-- name: name
-  target: subscription
-  filters:
-  - type: tolower
-  - type: regexp
-    regexp: /subscription/([^/]+)/.*
-    replacement: $1
-- name: created
-  filters: [toUnixtime]
-- name: created
-  type: value
-  filters: [toUnixtime]
-- name: invalid
-  type: bool
-- name: valid
-  type: bool
-defaultField:
-  type: ignore
-`)
-
-	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
-
-	metricTestSuite := testingMetricResult{t: t, list: metricList}
-	metricTestSuite.assertMetricNames(1)
-
-	metricTestSuite.assertMetric("formatter-test")
-	metricTestSuite.metric("formatter-test").assertRowCount(1)
-	metricTestSuite.metric("formatter-test").row(0).assertLabels("id", "subscription", "created", "invalid", "valid")
-	metricTestSuite.metric("formatter-test").row(0).assertLabel("subscription", "xxxxxx-xxxxx-xxxxx-xxxxx")
-	metricTestSuite.metric("formatter-test").row(0).assertLabel("created", "1611145414")
-	metricTestSuite.metric("formatter-test").row(0).assertLabel("invalid", "false")
-	metricTestSuite.metric("formatter-test").row(0).assertLabel("valid", "true")
-	metricTestSuite.metric("formatter-test").row(0).assertValue(1611145414)
-}
-
-func TestMetricRowParsingWithExpand(t *testing.T) {
-	resultRow := parseResourceGraphJsonToResultRow(t, `{
-"id": "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename",
-"properties": {
-  "firewallActive": true,
-  "sku": {
-    "name": "Free",
-    "capacity": 2
-  },
-  "pools": [
-    {
-      "name": "pool1",
-      "instances": 15
-    },{
-      "name": "pool2"
-    }
-  ]
-}
-}`)
-
-	queryConfig := parseMetricConfig(t, `
-metric: resource
-fields:
-- name: id
-  type: id
-- name: properties
-  expand:
-    value: 2
-    fields:
-    - name: sku
-      expand:
-        fields:
-        - name: capacity
-          type: value
-    - name: pools
-      expand:
-        value: 0
-        fields:
-        - name: name
-        - name: instances
-          type: value
-`)
-
-	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
-
-	metricTestSuite := testingMetricResult{t: t, list: metricList}
-	metricTestSuite.assertMetricNames(4)
-
-	metricTestSuite.assertMetric("resource")
-	metricTestSuite.metric("resource").assertRowCount(1)
-	metricTestSuite.metric("resource").row(0).assertLabels("id")
-	metricTestSuite.metric("resource").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
-	metricTestSuite.metric("resource").row(0).assertValue(1)
-	metricTestSuite.metric("resource").row(0).assertValue(1)
-
-	metricTestSuite.assertMetric("resource_properties")
-	metricTestSuite.metric("resource_properties").assertRowCount(1)
-	metricTestSuite.metric("resource_properties").row(0).assertLabels("id", "firewallActive")
-	metricTestSuite.metric("resource_properties").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
-	metricTestSuite.metric("resource_properties").row(0).assertLabel("firewallActive", "true")
-	metricTestSuite.metric("resource_properties").row(0).assertValue(2)
-
-	metricTestSuite.assertMetric("resource_properties_sku")
-	metricTestSuite.metric("resource_properties_sku").assertRowCount(1)
-	metricTestSuite.metric("resource_properties_sku").row(0).assertLabels("id", "name")
-	metricTestSuite.metric("resource_properties_sku").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
-	metricTestSuite.metric("resource_properties_sku").row(0).assertLabel("name", "Free")
-	metricTestSuite.metric("resource_properties_sku").row(0).assertValue(2)
-
-	metricTestSuite.assertMetric("resource_properties_pools")
-	metricTestSuite.metric("resource_properties_pools").assertRowCount(2)
-	metricTestSuite.metric("resource_properties_pools").row(0).assertLabels("id", "name")
-	metricTestSuite.metric("resource_properties_pools").row(0).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
-	metricTestSuite.metric("resource_properties_pools").row(0).assertLabel("name", "pool1")
-	metricTestSuite.metric("resource_properties_pools").row(0).assertValue(15)
-	metricTestSuite.metric("resource_properties_pools").row(1).assertLabels("id", "name")
-	metricTestSuite.metric("resource_properties_pools").row(1).assertLabel("id", "/subscription/xxxxXx-xxxxx-xxxxx-xxxxx/resourceGroup/zzzzzzzzzzzz/providerid/resourcename")
-	metricTestSuite.metric("resource_properties_pools").row(1).assertLabel("name", "pool2")
-	metricTestSuite.metric("resource_properties_pools").row(1).assertValue(0)
-}
-
-func TestMetricRowParsingWithAdditonalLabels(t *testing.T) {
-	resultRow := parseResourceGraphJsonToResultRow(t, `{
-"name": "foobar",
-"count_": 20,
-"resources": 13,
+"valueA": 13,
+"valueB": 12,
 "should-not-exists": "testing"
 }`)
 
@@ -216,13 +43,21 @@ fields:
 - name: name
   target: id
   type: id
+
 - name: count_
   type: value
-- name: resources
-  metric: azure_testing_resources
+
+- name: valueA
+  metric: azure_testing_value
   type: value
   labels:
-    labelx: foobary
+    scope: one
+
+- name: valueB
+  metric: azure_testing_value
+  type: value
+  labels:
+    scope: two
 
 defaultField:
   type: ignore
@@ -230,6 +65,7 @@ defaultField:
 
 	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
+	fmt.Println(metricList)
 	if len(metricList) != 2 {
 		t.Fatalf(`metric count not valid, expected: %v, found: %v`, 2, len(metricList))
 	}
@@ -244,12 +80,17 @@ defaultField:
 	metricTestSuite.metric("azure_testing").row(0).assertLabel("example", "barfoo")
 	metricTestSuite.metric("azure_testing").row(0).assertValue(20)
 
-	metricTestSuite.assertMetric("azure_testing_resources")
-	metricTestSuite.metric("azure_testing_resources").assertRowCount(1)
-	metricTestSuite.metric("azure_testing_resources").row(0).assertLabels("id", "labelx")
-	metricTestSuite.metric("azure_testing_resources").row(0).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing_resources").row(0).assertLabel("labelx", "foobary")
-	metricTestSuite.metric("azure_testing_resources").row(0).assertValue(13)
+	metricTestSuite.assertMetric("azure_testing_value")
+	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
+	metricTestSuite.metric("azure_testing_value").row(0).assertLabels("id", "scope")
+	metricTestSuite.metric("azure_testing_value").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing_value").row(0).assertLabel("scope", "one")
+	metricTestSuite.metric("azure_testing_value").row(0).assertValue(13)
+
+	metricTestSuite.metric("azure_testing_value").row(1).assertLabels("id", "scope")
+	metricTestSuite.metric("azure_testing_value").row(1).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing_value").row(1).assertLabel("scope", "two")
+	metricTestSuite.metric("azure_testing_value").row(1).assertValue(12)
 }
 
 func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]interface{} {
