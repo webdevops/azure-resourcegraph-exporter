@@ -12,6 +12,10 @@ queries:
     ## eg for static metrics like informational metrics
     value: 1
 
+    ## additional labels (optional)
+    labels:
+      scope: resources
+
     fields:
         ## name of the field from the result
       - name: id
@@ -43,6 +47,9 @@ queries:
       - name: tags
         metric: azure_resources_tags
         expand: {}
+        ## additional labels (optional)
+        labels:
+          scope: resourcetags
 
       ## expand properties
       - name: properties

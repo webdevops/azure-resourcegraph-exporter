@@ -200,6 +200,58 @@ fields:
 	metricTestSuite.metric("resource_properties_pools").row(1).assertValue(0)
 }
 
+func TestMetricRowParsingWithAdditonalLabels(t *testing.T) {
+	resultRow := parseResourceGraphJsonToResultRow(t, `{
+"name": "foobar",
+"count_": 20,
+"resources": 13,
+"should-not-exists": "testing"
+}`)
+
+	queryConfig := parseMetricConfig(t, `
+metric: azure_testing
+labels:
+  example: barfoo
+fields:
+- name: name
+  target: id
+  type: id
+- name: count_
+  type: value
+- name: resources
+  metric: azure_testing_resources
+  type: value
+  labels:
+    labelx: foobary
+
+defaultField:
+  type: ignore
+`)
+
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+
+	if len(metricList) != 2 {
+		t.Fatalf(`metric count not valid, expected: %v, found: %v`, 2, len(metricList))
+	}
+
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricNames(2)
+
+	metricTestSuite.assertMetric("azure_testing")
+	metricTestSuite.metric("azure_testing").assertRowCount(1)
+	metricTestSuite.metric("azure_testing").row(0).assertLabels("id", "example")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("example", "barfoo")
+	metricTestSuite.metric("azure_testing").row(0).assertValue(20)
+
+	metricTestSuite.assertMetric("azure_testing_resources")
+	metricTestSuite.metric("azure_testing_resources").assertRowCount(1)
+	metricTestSuite.metric("azure_testing_resources").row(0).assertLabels("id", "labelx")
+	metricTestSuite.metric("azure_testing_resources").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing_resources").row(0).assertLabel("labelx", "foobary")
+	metricTestSuite.metric("azure_testing_resources").row(0).assertValue(13)
+}
+
 func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]interface{} {
 	t.Helper()
 	ret := map[string]interface{}{}

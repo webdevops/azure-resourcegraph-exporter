@@ -18,6 +18,11 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 		mainMetrics[name].Value = *metricConfig.Value
 	}
 
+	// additional labels
+	for rowName, rowValue := range metricConfig.Labels {
+		mainMetrics[name].Labels[rowName] = rowValue
+	}
+
 	// main metric
 	for fieldName, rowValue := range row {
 		if fieldConfList, ok := fieldConfigMap[fieldName]; ok {
@@ -41,12 +46,19 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 
 				processFieldAndAddToMetric(fieldName, rowValue, fieldConfig, mainMetrics[fieldConfig.Metric])
 
+				// additional labels
+				for rowName, rowValue := range fieldConfig.Labels {
+					mainMetrics[fieldConfig.Metric].Labels[rowName] = rowValue
+				}
+
+				// id labels
 				if fieldConfig.IsTypeId() {
 					labelName := fieldConfig.GetTargetFieldName(fieldName)
 					if _, ok := mainMetrics[name].Labels[labelName]; ok {
 						idFieldList[labelName] = mainMetrics[name].Labels[labelName]
 					}
 				}
+
 			}
 		} else {
 			// no field config, fall back to "defaultField"

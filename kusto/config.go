@@ -43,6 +43,7 @@ type (
 	ConfigQueryMetric struct {
 		Value        *float64                 `yaml:"value"`
 		Fields       []ConfigQueryMetricField `yaml:"fields"`
+		Labels       map[string]string        `yaml:"labels"`
 		DefaultField ConfigQueryMetricField   `yaml:"defaultField"`
 	}
 
@@ -52,6 +53,7 @@ type (
 		Source  string                         `yaml:"source"`
 		Target  string                         `yaml:"target"`
 		Type    string                         `yaml:"type"`
+		Labels  map[string]string              `yaml:"labels"`
 		Filters []ConfigQueryMetricFieldFilter `yaml:"filters"`
 		Expand  *ConfigQueryMetric             `yaml:"expand"`
 	}
