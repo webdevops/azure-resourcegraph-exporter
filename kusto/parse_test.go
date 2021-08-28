@@ -3,6 +3,7 @@ package kusto
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	"testing"
 )
@@ -82,15 +83,23 @@ defaultField:
 
 	metricTestSuite.assertMetric("azure_testing_value")
 	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
-	metricTestSuite.metric("azure_testing_value").row(0).assertLabels("id", "scope")
-	metricTestSuite.metric("azure_testing_value").row(0).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing_value").row(0).assertLabel("scope", "one")
-	metricTestSuite.metric("azure_testing_value").row(0).assertValue(13)
 
-	metricTestSuite.metric("azure_testing_value").row(1).assertLabels("id", "scope")
-	metricTestSuite.metric("azure_testing_value").row(1).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing_value").row(1).assertLabel("scope", "two")
-	metricTestSuite.metric("azure_testing_value").row(1).assertValue(12)
+	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
+	{
+		firstRow.assertLabels("id", "scope")
+		firstRow.assertLabel("id", "foobar")
+		firstRow.assertLabel("scope", "one")
+		firstRow.assertValue(13)
+	}
+
+	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
+	{
+		secondRow.assertLabels("id", "scope")
+		secondRow.assertLabel("id", "foobar")
+		secondRow.assertLabel("scope", "two")
+		secondRow.assertValue(12)
+	}
+
 }
 
 func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]interface{} {
@@ -144,6 +153,23 @@ func (m *testingMetricList) row(row int) *testingMetricRow {
 	return &testingMetricRow{t: m.t, row: m.list[row], name: m.name}
 }
 
+func (m *testingMetricList) findRowByLabels(selector prometheus.Labels) *testingMetricRow {
+	m.t.Helper()
+
+metricListLoop:
+	for _, row := range m.list {
+		for selectorName, selectorValue := range selector {
+			if labelValue, exists := row.Labels[selectorName]; !exists || labelValue != selectorValue {
+				continue metricListLoop
+			}
+		}
+		return &testingMetricRow{t: m.t, row: row, name: m.name}
+	}
+
+	m.t.Fatalf(`metric row with labels selector %v not found`, selector)
+
+	return nil
+}
 func (m *testingMetricRow) assertLabels(labels ...string) {
 	m.t.Helper()
 
