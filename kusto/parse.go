@@ -64,6 +64,7 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 					}
 				}
 
+				// check if metric should be skipped
 				if isNewMetricRow {
 					// save as own metric
 					if _, ok := list[fieldConfig.Metric]; !ok {
@@ -123,11 +124,13 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 	}
 
 	// add main metrics
-	for metricName, metricRow := range mainMetrics {
-		if _, ok := list[metricName]; !ok {
-			list[metricName] = []MetricRow{}
+	if metricConfig.IsPublished() {
+		for metricName, metricRow := range mainMetrics {
+			if _, ok := list[metricName]; !ok {
+				list[metricName] = []MetricRow{}
+			}
+			list[metricName] = append(list[metricName], *metricRow)
 		}
-		list[metricName] = append(list[metricName], *metricRow)
 	}
 
 	// add id labels

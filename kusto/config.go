@@ -45,6 +45,7 @@ type (
 		Fields       []ConfigQueryMetricField `yaml:"fields"`
 		Labels       map[string]string        `yaml:"labels"`
 		DefaultField ConfigQueryMetricField   `yaml:"defaultField"`
+		Publish      *bool                    `yaml:"publish"`
 	}
 
 	ConfigQueryMetricField struct {
@@ -109,6 +110,14 @@ func (c *ConfigQueryMetric) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *ConfigQueryMetric) IsPublished() bool {
+	if c.Publish != nil {
+		return *c.Publish
+	}
+
+	return true
 }
 
 func (c *ConfigQueryMetricField) Validate() error {

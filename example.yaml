@@ -3,6 +3,10 @@ queries:
     # name of metric
   - metric: azure_resources
 
+    # skip metric publishing
+    # and only publish sub metrics rows (and use configuration only for submetrics)
+    # publish: false
+
     # Azure ResourceGraph query
     query: |-
       Resources
