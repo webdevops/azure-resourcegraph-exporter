@@ -86,7 +86,6 @@ defaultField:
 		firstRow.assertValue(13)
 	}
 
-
 	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
 	{
 		secondRow.assertLabels("id", "scope")
@@ -228,7 +227,6 @@ defaultField:
 	}
 }
 
-
 func TestMetricRowParsingWithSubMetricsWithNullValues(t *testing.T) {
 	resultRow := parseResourceGraphJsonToResultRow(t, `{
 "name": "foobar",
@@ -266,7 +264,6 @@ defaultField:
   type: ignore
 `)
 
-
 	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
 
 	metricTestSuite := testingMetricResult{t: t, list: metricList}
@@ -298,7 +295,6 @@ defaultField:
 		secondRow.assertNilValue()
 	}
 }
-
 
 func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]interface{} {
 	t.Helper()
