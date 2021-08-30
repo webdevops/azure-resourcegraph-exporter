@@ -15,7 +15,7 @@ func BuildPrometheusMetricList(name string, metricConfig ConfigQueryMetric, row 
 
 	// add default value to main metric (if set)
 	if metricConfig.Value != nil {
-		mainMetrics[name].Value = *metricConfig.Value
+		mainMetrics[name].Value = metricConfig.Value
 	}
 
 	// additional labels

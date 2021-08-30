@@ -77,15 +77,23 @@ defaultField:
 
 	metricTestSuite.assertMetric("azure_testing_value")
 	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
-	metricTestSuite.metric("azure_testing_value").row(0).assertLabels("id", "scope")
-	metricTestSuite.metric("azure_testing_value").row(0).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing_value").row(0).assertLabel("scope", "one")
-	metricTestSuite.metric("azure_testing_value").row(0).assertValue(13)
 
-	metricTestSuite.metric("azure_testing_value").row(1).assertLabels("id", "scope")
-	metricTestSuite.metric("azure_testing_value").row(1).assertLabel("id", "foobar")
-	metricTestSuite.metric("azure_testing_value").row(1).assertLabel("scope", "two")
-	metricTestSuite.metric("azure_testing_value").row(1).assertValue(12)
+	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
+	{
+		firstRow.assertLabels("id", "scope")
+		firstRow.assertLabel("id", "foobar")
+		firstRow.assertLabel("scope", "one")
+		firstRow.assertValue(13)
+	}
+
+
+	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
+	{
+		secondRow.assertLabels("id", "scope")
+		secondRow.assertLabel("id", "foobar")
+		secondRow.assertLabel("scope", "two")
+		secondRow.assertValue(12)
+	}
 }
 
 func TestMetricRowParsingWithSubMetrics(t *testing.T) {
@@ -220,6 +228,78 @@ defaultField:
 	}
 }
 
+
+func TestMetricRowParsingWithSubMetricsWithNullValues(t *testing.T) {
+	resultRow := parseResourceGraphJsonToResultRow(t, `{
+"name": "foobar",
+"count_": 20,
+"valueA": null,
+"valueB": null,
+"should-not-exists": "testing"
+}`)
+
+	queryConfig := parseMetricConfig(t, `
+metric: azure_testing
+labels:
+  example: barfoo
+fields:
+- name: name
+  target: id
+  type: id
+
+- name: count_
+  type: value
+
+- name: valueA
+  metric: azure_testing_value
+  type: value
+  labels:
+    scope: one
+
+- name: valueB
+  metric: azure_testing_value
+  type: value
+  labels:
+    scope: two
+
+defaultField:
+  type: ignore
+`)
+
+
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricNames(2)
+
+	metricTestSuite.assertMetric("azure_testing")
+	metricTestSuite.metric("azure_testing").assertRowCount(1)
+	metricTestSuite.metric("azure_testing").row(0).assertLabels("id", "example")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("example", "barfoo")
+	metricTestSuite.metric("azure_testing").row(0).assertValue(20)
+
+	metricTestSuite.assertMetric("azure_testing_value")
+	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
+
+	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
+	{
+		firstRow.assertLabels("id", "scope")
+		firstRow.assertLabel("id", "foobar")
+		firstRow.assertLabel("scope", "one")
+		firstRow.assertNilValue()
+	}
+
+	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
+	{
+		secondRow.assertLabels("id", "scope")
+		secondRow.assertLabel("id", "foobar")
+		secondRow.assertLabel("scope", "two")
+		secondRow.assertNilValue()
+	}
+}
+
+
 func parseResourceGraphJsonToResultRow(t *testing.T, data string) map[string]interface{} {
 	t.Helper()
 	ret := map[string]interface{}{}
@@ -318,7 +398,19 @@ func (m *testingMetricRow) assertLabel(labelName, labelValue string) {
 
 func (m *testingMetricRow) assertValue(metricValue float64) {
 	m.t.Helper()
-	if val := m.row.Value; val != metricValue {
-		m.t.Fatalf(`metric row "%v" has wrong metric value; expected: "%v", got: "%v"`, m.name, metricValue, val)
+
+	if val := m.row.Value; val == nil {
+		m.t.Fatalf(`metric row "%v" has wrong metric value; expected: "%v", got: "%v"`, m.name, metricValue, "<nil>")
+	}
+
+	if val := m.row.Value; *val != metricValue {
+		m.t.Fatalf(`metric row "%v" has wrong metric value; expected: "%v", got: "%v"`, m.name, metricValue, *val)
+	}
+}
+
+func (m *testingMetricRow) assertNilValue() {
+	m.t.Helper()
+	if val := m.row.Value; val != nil {
+		m.t.Fatalf(`metric row "%v" has wrong metric value; expected: "%v", got: "%v"`, m.name, "<nil", *val)
 	}
 }

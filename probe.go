@@ -182,7 +182,9 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			gaugeVec.With(metric.Labels).Set(metric.Value)
+			if metric.Value != nil {
+				gaugeVec.With(metric.Labels).Set(*metric.Value)
+			}
 		}
 	}
 	probeLogger.WithField("duration", time.Since(requestTime).String()).Debug("finished request")

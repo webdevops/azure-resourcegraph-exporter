@@ -35,3 +35,7 @@ func convertStringToUnixtime(val string) (ret string) {
 
 	return
 }
+
+func toFloat64Ptr(val float64) *float64 {
+	return &val
+}

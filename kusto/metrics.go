@@ -9,14 +9,14 @@ type (
 
 	MetricRow struct {
 		Labels prometheus.Labels
-		Value  float64
+		Value  *float64
 	}
 )
 
 func NewMetricRow() *MetricRow {
 	return &MetricRow{
 		Labels: prometheus.Labels{},
-		Value:  1,
+		Value:  nil,
 	}
 }
 

@@ -43,15 +43,17 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 	}
 
 	switch v := value.(type) {
+	case nil:
+		metric.Value = nil
 	// ----------------------------------------------------
 	// string
 	case string:
 		v = fieldConfig.TransformString(v)
 		if fieldConfig.IsTypeValue() {
 			if value, err := strconv.ParseFloat(v, 64); err == nil {
-				metric.Value = value
+				metric.Value = &value
 			} else {
-				metric.Value = 0
+				metric.Value = nil
 			}
 		} else {
 			metric.Labels[labelName] = v
@@ -61,14 +63,14 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 	case uint64:
 		fieldValue := fieldConfig.TransformFloat64(float64(v))
 		if fieldConfig.IsTypeValue() {
-			metric.Value = float64(v)
+			metric.Value = toFloat64Ptr(float64(v))
 		} else {
 			metric.Labels[labelName] = fieldValue
 		}
 	case int64:
 		fieldValue := fieldConfig.TransformFloat64(float64(v))
 		if fieldConfig.IsTypeValue() {
-			metric.Value = float64(v)
+			metric.Value = toFloat64Ptr(float64(v))
 		} else {
 			metric.Labels[labelName] = fieldValue
 		}
@@ -78,7 +80,7 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 	case float64:
 		fieldValue := fieldConfig.TransformFloat64(v)
 		if fieldConfig.IsTypeValue() {
-			metric.Value = v
+			metric.Value = toFloat64Ptr(v)
 		} else {
 			metric.Labels[labelName] = fieldValue
 		}
@@ -89,9 +91,9 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 		fieldValue := fieldConfig.TransformBool(v)
 		if fieldConfig.IsTypeValue() {
 			if v {
-				metric.Value = 1
+				metric.Value = toFloat64Ptr(1)
 			} else {
-				metric.Value = 0
+				metric.Value = toFloat64Ptr(0)
 			}
 		} else {
 			metric.Labels[labelName] = fieldValue
