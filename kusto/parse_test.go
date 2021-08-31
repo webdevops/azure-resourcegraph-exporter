@@ -160,7 +160,6 @@ defaultField:
 	}
 }
 
-
 func TestResourceGraphArmResourceParsing(t *testing.T) {
 	resultRow := parseResourceGraphJsonToResultRow(t, `{
 	"id": "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster",
