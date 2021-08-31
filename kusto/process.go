@@ -43,8 +43,6 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 	}
 
 	switch v := value.(type) {
-	case nil:
-		metric.Value = nil
 	// ----------------------------------------------------
 	// string
 	case string:
@@ -98,5 +96,10 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 		} else {
 			metric.Labels[labelName] = fieldValue
 		}
+
+	// ----------------------------------------------------
+	// nil
+	case nil:
+		metric.Value = nil
 	}
 }

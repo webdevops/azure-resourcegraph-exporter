@@ -15,6 +15,7 @@ queries:
         | join  kind=inner (
             Resources | project subscriptionId, type | summarize count() by subscriptionId,type
           ) on subscriptionId,type
+    value: 1
     fields:
       -
         name: type
@@ -46,6 +47,7 @@ queries:
     query: |-
       ResourceContainers
       | where type == "microsoft.resources/subscriptions"
+    value: 1
     fields:
       -
         name: name
@@ -67,6 +69,7 @@ queries:
       | join  kind=inner (
           Resources | project subscriptionId, resourceGroup | summarize resourceCount=count() by subscriptionId,resourceGroup
         ) on subscriptionId,resourceGroup
+    value: 1
     fields:
       -
         name: resourceGroup
@@ -170,6 +173,7 @@ queries:
             -
               name: maxCount
               metric: azurerm_managedclusters_aks_pool_size_max
+              type: value
             -
               name: maxPods
               metric: azurerm_managedclusters_aks_pool_maxpods

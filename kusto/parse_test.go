@@ -78,20 +78,18 @@ defaultField:
 	metricTestSuite.assertMetric("azure_testing_value")
 	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
 
-	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
-	{
-		firstRow.assertLabels("id", "scope")
-		firstRow.assertLabel("id", "foobar")
-		firstRow.assertLabel("scope", "one")
-		firstRow.assertValue(13)
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "one")
+		row.assertValue(13)
 	}
 
-	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
-	{
-		secondRow.assertLabels("id", "scope")
-		secondRow.assertLabel("id", "foobar")
-		secondRow.assertLabel("scope", "two")
-		secondRow.assertValue(12)
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "two")
+		row.assertValue(12)
 	}
 }
 
@@ -147,21 +145,240 @@ defaultField:
 	metricTestSuite.assertMetric("azure_testing_value")
 	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
 
-	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
-	{
-		firstRow.assertLabels("id", "scope")
-		firstRow.assertLabel("id", "foobar")
-		firstRow.assertLabel("scope", "one")
-		firstRow.assertValue(13)
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "one")
+		row.assertValue(13)
 	}
 
-	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
-	{
-		secondRow.assertLabels("id", "scope")
-		secondRow.assertLabel("id", "foobar")
-		secondRow.assertLabel("scope", "two")
-		secondRow.assertValue(12)
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "two")
+		row.assertValue(12)
 	}
+}
+
+
+func TestResourceGraphArmResourceParsing(t *testing.T) {
+	resultRow := parseResourceGraphJsonToResultRow(t, `{
+	"id": "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster",
+	"name": "examplecluster",
+	"type": "microsoft.containerservice/managedclusters",
+	"subscriptionId": "xxxxxx-1234-1234-1234-xxxxxxxxxxx",
+	"location": "westeurope",
+	"tags": {
+		"owner": "team-xzy",
+		"domain": "kubernetes"
+	},
+	"sku": {
+		"name": "Basic",
+		"tier": "Free"
+	},
+	"kubernetesVersion": "1.21.2",
+	"agentPoolProfiles": [
+		{
+			"provisioningState": "Succeeded",
+			"name": "agents",
+			"type": "VirtualMachineScaleSets",
+			"powerState": {
+				"code": "Running"
+			},
+			"osType": "Linux",
+			"vmSize": "Standard_B2s",
+			"count": 15,
+			"mode": "System",
+			"orchestratorVersion": "1.21.2",
+			"nodeImageVersion": "AKSUbuntu-1804containerd-2021.08.07",
+			"osDiskSizeGB": 128,
+			"osDiskType": "Managed",
+			"maxPods": 110,
+			"upgradeSettings": {}
+		},
+		{
+			"provisioningState": "Succeeded",
+			"name": "nodepool1",
+			"type": "VirtualMachineScaleSets",
+			"powerState": {
+				"code": "Running"
+			},
+			"osType": "Linux",
+			"vmSize": "Standard_DS2_v2",
+			"count": 12,
+			"minCount": 2,
+			"maxCount": 100,
+			"mode": "User",
+			"orchestratorVersion": "1.21.2",
+			"nodeImageVersion": "AKSUbuntu-1804containerd-2021.08.07",
+			"enableAutoScaling": true,
+			"osDiskSizeGB": 128,
+			"enableNodePublicIP": false,
+			"osDiskType": "Managed",
+			"maxPods": 110,
+			"nodeLabels": {}
+		}
+	]
+}`)
+
+	queryConfig := parseMetricConfig(t, `
+tagFields: &tagFields
+  - name: owner
+  - name: domain
+tagDefaultField: &defaultTagField
+  type: ignore
+
+metric: azurerm_managedclusters_aks_info
+query: |-
+  Resources
+  | where type == "microsoft.containerservice/managedclusters"
+  | where isnotempty(properties.kubernetesVersion)
+  | project id, name, subscriptionId, location, type, resourceGroup, tags, version = properties.kubernetesVersion, agentPoolProfiles = properties.agentPoolProfiles
+value: 1
+fields:
+  -
+    name: id
+    target: resourceID
+    type: id
+  -
+    name: name
+    target: cluster
+  -
+    name: subscriptionId
+    target: subscriptionID
+  -
+    name: location
+  -
+    name: type
+    target: provider
+  -
+    name: resourceGroup
+  -
+    name: kubernetesVersion
+  -
+    name: tags
+    metric: azurerm_managedclusters_tags
+    expand:
+      value: 1
+      fields: *tagFields
+      defaultField: *defaultTagField
+  -
+    name: agentPoolProfiles
+    metric: azurerm_managedclusters_aks_pool
+    expand:
+      value: 1
+      fields:
+        -
+          name: name
+          target: pool
+          type: id
+        -
+          name: osType
+        -
+          name: vmSize
+        -
+          name: orchestratorVersion
+          target: version
+        -
+          name: enableAutoScaling
+          type: boolean
+          target: autoScaling
+        -
+          name: count
+          metric: azurerm_managedclusters_aks_pool_size
+          type: value
+        -
+          name: minCount
+          metric: azurerm_managedclusters_aks_pool_size_min
+          type: value
+        -
+          name: maxCount
+          metric: azurerm_managedclusters_aks_pool_size_max
+          type: value
+        -
+          name: maxPods
+          metric: azurerm_managedclusters_aks_pool_maxpods
+          type: value
+        -
+          name: osDiskSizeGB
+          metric: azurerm_managedclusters_aks_pool_os_disksize
+          type: value
+
+      defaultField:
+        type: ignore
+
+defaultField:
+  type: ignore
+`)
+
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricNames(8)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_info")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").assertRowCount(1)
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabels("cluster", "location", "provider", "resourceID", "subscriptionID", "kubernetesVersion")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabel("cluster", "examplecluster")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabel("location", "westeurope")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabel("provider", "microsoft.containerservice/managedclusters")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabel("resourceID", "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabel("subscriptionID", "xxxxxx-1234-1234-1234-xxxxxxxxxxx")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertLabel("kubernetesVersion", "1.21.2")
+	metricTestSuite.metric("azurerm_managedclusters_aks_info").row(0).assertValue(1)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_tags")
+	metricTestSuite.metric("azurerm_managedclusters_tags").assertRowCount(1)
+	metricTestSuite.metric("azurerm_managedclusters_tags").row(0).assertLabels("resourceID", "domain", "owner")
+	metricTestSuite.metric("azurerm_managedclusters_tags").row(0).assertLabel("resourceID", "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster")
+	metricTestSuite.metric("azurerm_managedclusters_tags").row(0).assertLabel("domain", "kubernetes")
+	metricTestSuite.metric("azurerm_managedclusters_tags").row(0).assertLabel("owner", "team-xzy")
+	metricTestSuite.metric("azurerm_managedclusters_tags").row(0).assertValue(1)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_pool")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool").assertRowCount(2)
+	if row := metricTestSuite.metric("azurerm_managedclusters_aks_pool").findRowByLabels(prometheus.Labels{"pool": "agents"}); row != nil {
+		row.assertLabels("resourceID", "pool", "osType", "vmSize", "version")
+		row.assertLabel("resourceID", "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster")
+		row.assertLabel("pool", "agents")
+		row.assertLabel("osType", "Linux")
+		row.assertLabel("vmSize", "Standard_B2s")
+		row.assertLabel("version", "1.21.2")
+		row.assertValue(1)
+	}
+	if row := metricTestSuite.metric("azurerm_managedclusters_aks_pool").findRowByLabels(prometheus.Labels{"pool": "nodepool1"}); row != nil {
+		row.assertLabels("resourceID", "pool", "osType", "vmSize", "version", "autoScaling")
+		row.assertLabel("resourceID", "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster")
+		row.assertLabel("pool", "nodepool1")
+		row.assertLabel("osType", "Linux")
+		row.assertLabel("vmSize", "Standard_DS2_v2")
+		row.assertLabel("version", "1.21.2")
+		row.assertLabel("autoScaling", "true")
+		row.assertValue(1)
+	}
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_pool_size")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size").assertRowCount(2)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_pool_size_min")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_min").assertRowCount(1)
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_min").row(0).assertLabels("resourceID", "pool")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_min").row(0).assertLabel("resourceID", "/subscriptions/xxxxxx-1234-1234-1234-xxxxxxxxxxx/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/examplecluster")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_min").row(0).assertLabel("pool", "nodepool1")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_min").row(0).assertValue(2)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_pool_size_max")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_max").assertRowCount(1)
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_max").row(0).assertLabels("resourceID", "pool")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_max").row(0).assertLabel("pool", "nodepool1")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_size_max").row(0).assertValue(100)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_pool_maxpods")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_maxpods").assertRowCount(2)
+
+	metricTestSuite.assertMetric("azurerm_managedclusters_aks_pool_os_disksize")
+	metricTestSuite.metric("azurerm_managedclusters_aks_pool_os_disksize").assertRowCount(2)
+
 }
 
 func TestMetricRowParsingWithSubMetricsWithDisabledMainMetric(t *testing.T) {
@@ -210,20 +427,18 @@ defaultField:
 	metricTestSuite.assertMetric("azure_testing_value")
 	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
 
-	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
-	{
-		firstRow.assertLabels("id", "scope")
-		firstRow.assertLabel("id", "foobar")
-		firstRow.assertLabel("scope", "one")
-		firstRow.assertValue(13)
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "one")
+		row.assertValue(13)
 	}
 
-	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
-	{
-		secondRow.assertLabels("id", "scope")
-		secondRow.assertLabel("id", "foobar")
-		secondRow.assertLabel("scope", "two")
-		secondRow.assertValue(12)
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "two")
+		row.assertValue(12)
 	}
 }
 
@@ -279,20 +494,18 @@ defaultField:
 	metricTestSuite.assertMetric("azure_testing_value")
 	metricTestSuite.metric("azure_testing_value").assertRowCount(2)
 
-	firstRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"})
-	{
-		firstRow.assertLabels("id", "scope")
-		firstRow.assertLabel("id", "foobar")
-		firstRow.assertLabel("scope", "one")
-		firstRow.assertNilValue()
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "one"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "one")
+		row.assertNilValue()
 	}
 
-	secondRow := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"})
-	{
-		secondRow.assertLabels("id", "scope")
-		secondRow.assertLabel("id", "foobar")
-		secondRow.assertLabel("scope", "two")
-		secondRow.assertNilValue()
+	if row := metricTestSuite.metric("azure_testing_value").findRowByLabels(prometheus.Labels{"scope": "two"}); row != nil {
+		row.assertLabels("id", "scope")
+		row.assertLabel("id", "foobar")
+		row.assertLabel("scope", "two")
+		row.assertNilValue()
 	}
 }
 
