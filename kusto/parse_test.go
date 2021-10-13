@@ -93,6 +93,58 @@ defaultField:
 	}
 }
 
+func TestMetricRowParsingFieldTypes(t *testing.T) {
+	resultRow := parseResourceGraphJsonToResultRow(t, `{
+"name": "foobar",
+"count_": 20,
+"valueA": 13,
+"valueB": null,
+"valueC": true,
+"valueD": false,
+"valueE": 12.34,
+"should-not-exists": "testing"
+}`)
+
+	queryConfig := parseMetricConfig(t, `
+metric: azure_testing
+labels:
+  example: barfoo
+fields:
+- name: name
+  target: id
+  type: id
+
+- name: count_
+  type: value
+
+- name: valueA
+- name: valueB
+- name: valueC
+- name: valueD
+- name: valueE
+
+defaultField:
+  type: ignore
+`)
+
+	metricList := BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow)
+
+	metricTestSuite := testingMetricResult{t: t, list: metricList}
+	metricTestSuite.assertMetricNames(1)
+
+	metricTestSuite.assertMetric("azure_testing")
+	metricTestSuite.metric("azure_testing").assertRowCount(1)
+	metricTestSuite.metric("azure_testing").row(0).assertLabels("id", "example", "valueA", "valueB", "valueC", "valueD", "valueE")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("id", "foobar")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("example", "barfoo")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("valueA", "13")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("valueB", "")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("valueC", "true")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("valueD", "false")
+	metricTestSuite.metric("azure_testing").row(0).assertLabel("valueE", "12.34")
+	metricTestSuite.metric("azure_testing").row(0).assertValue(20)
+}
+
 func TestMetricRowParsingWithSubMetrics(t *testing.T) {
 	resultRow := parseResourceGraphJsonToResultRow(t, `{
 "name": "foobar",

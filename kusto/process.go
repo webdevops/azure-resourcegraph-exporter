@@ -100,6 +100,10 @@ func processFieldAndAddToMetric(fieldName string, value interface{}, fieldConfig
 	// ----------------------------------------------------
 	// nil
 	case nil:
-		metric.Value = nil
+		if fieldConfig.IsTypeValue() {
+			metric.Value = nil
+		} else {
+			metric.Labels[labelName] = ""
+		}
 	}
 }
