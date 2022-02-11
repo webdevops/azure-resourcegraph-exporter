@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/azure-resourcegraph-exporter/kusto"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -50,8 +48,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 	// Create and authorize a ResourceGraph client
 	resourcegraphClient := resourcegraph.NewWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
-	resourcegraphClient.Authorizer = AzureAuthorizer
-	resourcegraphClient.ResponseInspector = respondDecorator()
+	decorateAzureAutoRest(&resourcegraphClient.Client)
 
 	metricList := kusto.MetricList{}
 	metricList.Init()
@@ -191,16 +188,4 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
-}
-
-func respondDecorator() autorest.RespondDecorator {
-	return func(p autorest.Responder) autorest.Responder {
-		return autorest.ResponderFunc(func(r *http.Response) error {
-			ratelimit := r.Header.Get("x-ms-user-quota-remaining")
-			if v, err := strconv.ParseInt(ratelimit, 10, 64); err == nil {
-				prometheusRateLimit.WithLabelValues().Set(float64(v))
-			}
-			return nil
-		})
-	}
 }

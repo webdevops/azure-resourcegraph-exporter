@@ -6,7 +6,6 @@ var (
 	prometheusQueryTime     *prometheus.SummaryVec
 	prometheusQueryResults  *prometheus.GaugeVec
 	prometheusQueryRequests *prometheus.CounterVec
-	prometheusRateLimit     *prometheus.GaugeVec
 )
 
 func initGlobalMetrics() {
@@ -45,13 +44,4 @@ func initGlobalMetrics() {
 		},
 	)
 	prometheus.MustRegister(prometheusQueryRequests)
-
-	prometheusRateLimit = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "azure_resourcegraph_ratelimit",
-			Help: "Azure ResourceGraph ratelimit",
-		},
-		[]string{},
-	)
-	prometheus.MustRegister(prometheusRateLimit)
 }

@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
 	"github.com/webdevops/azure-resourcegraph-exporter/kusto"
+	"github.com/webdevops/go-prometheus-common/azuretracing"
 	"net/http"
 	"os"
 	"path"
@@ -23,6 +24,8 @@ import (
 
 const (
 	Author = "webdevops.io"
+
+	UserAgent = "azure-resourcegraph-exporter/"
 )
 
 var (
@@ -134,7 +137,7 @@ func initAzureConnection() {
 	}
 
 	subscriptionsClient := subscriptions.NewClientWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
-	subscriptionsClient.Authorizer = AzureAuthorizer
+	decorateAzureAutoRest(&subscriptionsClient.Client)
 
 	if len(opts.Azure.Subscription) == 0 {
 		// auto lookup subscriptions
@@ -162,9 +165,24 @@ func initAzureConnection() {
 
 // start and handle prometheus handler
 func startHttpServer() {
-	http.Handle("/metrics", promhttp.Handler())
+	// healthz
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := fmt.Fprint(w, "Ok"); err != nil {
+			log.Error(err)
+		}
+	})
+
+	http.Handle("/metrics", azuretracing.RegisterAzureMetricAutoClean(promhttp.Handler()))
 
 	http.HandleFunc("/probe", handleProbeRequest)
 
 	log.Fatal(http.ListenAndServe(opts.ServerBind, nil))
+}
+
+func decorateAzureAutoRest(client *autorest.Client) {
+	client.Authorizer = AzureAuthorizer
+	if err := client.AddToUserAgent(UserAgent + gitTag); err != nil {
+		log.Panic(err)
+	}
+	azuretracing.DecoreAzureAutoRest(client)
 }
