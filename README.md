@@ -1,5 +1,4 @@
-Azure ResourceGraph exporter
-============================
+# Azure ResourceGraph exporter
 
 [![license](https://img.shields.io/github/license/webdevops/azure-resourcegraph-exporter.svg)](https://github.com/webdevops/azure-resourcegraph-exporter/blob/master/LICENSE)
 [![DockerHub](https://img.shields.io/badge/DockerHub-webdevops%2Fazure--resourcegraph--exporter-blue)](https://hub.docker.com/r/webdevops/azure-resourcegraph-exporter/)
@@ -7,8 +6,7 @@ Azure ResourceGraph exporter
 
 Prometheus exporter for Azure ResourceGraph queries with configurable fields and transformations.
 
-Usage
------
+## Usage
 
 ```
 Usage:
@@ -27,16 +25,14 @@ Help Options:
   -h, --help                Show this help message
 ```
 
-for Azure API authentication (using ENV vars) see https://github.com/Azure/azure-sdk-for-go#authentication
+for Azure API authentication (using ENV vars) see https://docs.microsoft.com/en-us/azure/developer/go/azure-sdk-authentication
 
-Configuration file
-------------------
+### Configuration file
 
 * see [example.yaml](example.yaml)
 * see [example.azure.yaml](example.azure.yaml)
 
-HTTP Endpoints
---------------
+## HTTP Endpoints
 
 | Endpoint                       | Description                                                                         |
 |--------------------------------|-------------------------------------------------------------------------------------|
@@ -45,8 +41,7 @@ HTTP Endpoints
 | `/probe?module=xzy`            | Execute resourcegraph queries for module `xzy`                                      |
 | `/probe?module=xzy&cache=2m`   | Execute resourcegraph queries for module `xzy` and enable caching for 2 minutes     |
 
-Global metrics
---------------
+## Global metrics
 
 | Metric                               | Description                                                                    |
 |--------------------------------------|--------------------------------------------------------------------------------|
@@ -56,8 +51,7 @@ Global metrics
 | `azure_resourcegraph_ratelimit`      | Current rate limit value from the Azure ResourceGraph API                      |
 
 
-Example
--------
+## Example
 
 Config file:
 ```
