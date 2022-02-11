@@ -319,6 +319,7 @@ func NewConfig(path string) (config Config) {
 	config = Config{}
 
 	log.Infof("reading configuration from file %v", path)
+	/*  #nosec G304 */
 	if data, err := ioutil.ReadFile(path); err == nil {
 		filecontent = data
 	} else {
