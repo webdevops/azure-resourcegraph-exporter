@@ -184,5 +184,5 @@ func decorateAzureAutoRest(client *autorest.Client) {
 	if err := client.AddToUserAgent(UserAgent + gitTag); err != nil {
 		log.Panic(err)
 	}
-	azuretracing.DecoreAzureAutoRest(client)
+	azuretracing.DecorateAzureAutoRestClient(client)
 }
