@@ -3,11 +3,12 @@ package kusto
 import (
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"regexp"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -33,6 +34,7 @@ type (
 
 	ConfigQuery struct {
 		MetricConfig  ConfigQueryMetric `yaml:",inline"`
+		QueryMode     string            `yaml:"queryMode"`
 		Metric        string            `yaml:"metric"`
 		Module        string            `yaml:"module"`
 		Query         string            `yaml:"query"`
