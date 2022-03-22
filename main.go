@@ -22,9 +22,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/go-prometheus-common/azuretracing"
+	"github.com/webdevops/go-prometheus-common/kusto"
 
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
-	"github.com/webdevops/azure-resourcegraph-exporter/kusto"
 )
 
 const (

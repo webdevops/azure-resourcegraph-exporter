@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"time"
+
 	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"github.com/webdevops/azure-resourcegraph-exporter/kusto"
-	"net/http"
-	"time"
+	"github.com/webdevops/go-prometheus-common/kusto"
 )
 
 const (
