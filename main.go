@@ -146,11 +146,18 @@ func initAzureConnection() {
 
 	if len(opts.Azure.Subscription) == 0 {
 		// auto lookup subscriptions
-		listResult, err := subscriptionsClient.List(ctx)
+		listResult, err := subscriptionsClient.ListComplete(ctx)
 		if err != nil {
 			log.Panic(err)
 		}
-		AzureSubscriptions = listResult.Values()
+		
+		AzureSubscriptions = []subscriptions.Subscription{}
+		for listResult.NotDone() {
+			v := listResult.Value()
+
+			AzureSubscriptions = append(AzureSubscriptions, v)
+			listResult.NextWithContext(ctx)
+		}
 
 		if len(AzureSubscriptions) == 0 {
 			log.Panic("no Azure Subscriptions found via auto detection, does this ServicePrincipal have read permissions to the subscriptions?")
