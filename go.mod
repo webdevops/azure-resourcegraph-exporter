@@ -3,7 +3,7 @@ module github.com/webdevops/azure-resourcegraph-exporter
 go 1.17
 
 require (
-	github.com/Azure/azure-sdk-for-go v61.4.0+incompatible
+	github.com/Azure/azure-sdk-for-go v63.1.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.24
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/google/uuid v1.3.0
@@ -11,7 +11,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.12.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/webdevops/go-prometheus-common v0.0.0-20220321213324-f642805cde75
+	github.com/webdevops/go-common v0.0.0-20220406093203-0ebb905ecf5a
 )
 
 require (

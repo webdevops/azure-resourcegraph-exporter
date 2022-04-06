@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"html/template"
@@ -21,8 +20,8 @@ import (
 	cache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"github.com/webdevops/go-prometheus-common/azuretracing"
-	"github.com/webdevops/go-prometheus-common/kusto"
+	"github.com/webdevops/go-common/prometheus/azuretracing"
+	"github.com/webdevops/go-common/prometheus/kusto"
 
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
 )
@@ -128,7 +127,6 @@ func readConfig() {
 // Init and build Azure authorzier
 func initAzureConnection() {
 	var err error
-	ctx := context.Background()
 
 	// setup azure authorizer
 	AzureAuthorizer, err = auth.NewAuthorizerFromEnvironment()
@@ -139,39 +137,6 @@ func initAzureConnection() {
 	AzureEnvironment, err = azure.EnvironmentFromName(*opts.Azure.Environment)
 	if err != nil {
 		log.Panic(err)
-	}
-
-	subscriptionsClient := subscriptions.NewClientWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
-	decorateAzureAutoRest(&subscriptionsClient.Client)
-
-	if len(opts.Azure.Subscription) == 0 {
-		// auto lookup subscriptions
-		listResult, err := subscriptionsClient.ListComplete(ctx)
-		if err != nil {
-			log.Panic(err)
-		}
-		
-		AzureSubscriptions = []subscriptions.Subscription{}
-		for listResult.NotDone() {
-			v := listResult.Value()
-
-			AzureSubscriptions = append(AzureSubscriptions, v)
-			listResult.NextWithContext(ctx)
-		}
-
-		if len(AzureSubscriptions) == 0 {
-			log.Panic("no Azure Subscriptions found via auto detection, does this ServicePrincipal have read permissions to the subscriptions?")
-		}
-	} else {
-		// fixed subscription list
-		AzureSubscriptions = []subscriptions.Subscription{}
-		for _, subId := range opts.Azure.Subscription {
-			result, err := subscriptionsClient.Get(ctx, subId)
-			if err != nil {
-				log.Panic(err)
-			}
-			AzureSubscriptions = append(AzureSubscriptions, result)
-		}
 	}
 }
 
