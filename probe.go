@@ -7,6 +7,7 @@ import (
 	"time"
 
 	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	RESOURCEGRAPH_QUERY_OPTIONS_TOP = 1000
+	ResourceGraphQueryOptionsTop = 1000
 )
 
 func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
@@ -43,13 +44,17 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	defaultSubscriptions := []string{}
-	for _, subscription := range AzureSubscriptions {
-		defaultSubscriptions = append(defaultSubscriptions, *subscription.SubscriptionID)
+	if subscriptionList, err := AzureClient.ListCachedSubscriptionsWithFilter(ctx, opts.Azure.Subscription...); err == nil {
+		for _, subscription := range subscriptionList {
+			defaultSubscriptions = append(defaultSubscriptions, to.String(subscription.SubscriptionID))
+		}
+	} else {
+		probeLogger.Panic(err)
 	}
 
 	// Create and authorize a ResourceGraph client
-	resourcegraphClient := resourcegraph.NewWithBaseURI(AzureEnvironment.ResourceManagerEndpoint)
-	decorateAzureAutoRest(&resourcegraphClient.Client)
+	resourceGraphClient := resourcegraph.NewWithBaseURI(AzureClient.Environment.ResourceManagerEndpoint)
+	AzureClient.DecorateAzureAutorest(&resourceGraphClient.Client)
 
 	metricList := kusto.MetricList{}
 	metricList.Init()
@@ -86,7 +91,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 				queryConfig.Subscriptions = &defaultSubscriptions
 			}
 
-			requestQueryTop := int32(RESOURCEGRAPH_QUERY_OPTIONS_TOP)
+			requestQueryTop := int32(ResourceGraphQueryOptionsTop)
 			requestQuerySkip := int32(0)
 
 			// Set options
@@ -108,7 +113,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 				prometheusQueryRequests.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Inc()
 
-				var results, queryErr = resourcegraphClient.Resources(ctx, Request)
+				var results, queryErr = resourceGraphClient.Resources(ctx, Request)
 				if results.TotalRecords != nil {
 					resultTotalRecords = int32(*results.TotalRecords)
 				}
