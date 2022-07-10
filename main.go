@@ -15,7 +15,7 @@ import (
 	cache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	azureCommon "github.com/webdevops/go-common/azure"
+	"github.com/webdevops/go-common/azuresdk/armclient"
 	"github.com/webdevops/go-common/prometheus/azuretracing"
 	"github.com/webdevops/go-common/prometheus/kusto"
 
@@ -34,7 +34,7 @@ var (
 
 	Config kusto.Config
 
-	AzureClient *azureCommon.Client
+	AzureClient *armclient.ArmClient
 
 	metricCache *cache.Cache
 
@@ -123,7 +123,7 @@ func readConfig() {
 
 func initAzureConnection() {
 	var err error
-	AzureClient, err = azureCommon.NewClientFromEnvironment(*opts.Azure.Environment, log.StandardLogger())
+	AzureClient, err = armclient.NewArmClientWithCloudName(*opts.Azure.Environment, log.StandardLogger())
 	if err != nil {
 		log.Panic(err.Error())
 	}

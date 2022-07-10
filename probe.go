@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	resourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/go-common/prometheus/kusto"
+	"github.com/webdevops/go-common/utils/to"
 )
 
 const (
@@ -53,8 +53,12 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create and authorize a ResourceGraph client
-	resourceGraphClient := resourcegraph.NewWithBaseURI(AzureClient.Environment.ResourceManagerEndpoint)
-	AzureClient.DecorateAzureAutorest(&resourceGraphClient.Client)
+	resourceGraphClient, err := armresourcegraph.NewClient(AzureClient.GetCred(), nil)
+	if err != nil {
+		probeLogger.Errorln(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	metricList := kusto.MetricList{}
 	metricList.Init()
@@ -87,16 +91,27 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			contextLogger := probeLogger.WithField("metric", queryConfig.Metric)
 			contextLogger.Debug("starting query")
 
-			if queryConfig.Subscriptions == nil {
+			querySubscriptions := []*string{}
+			if queryConfig.Subscriptions != nil {
+				for _, val := range *queryConfig.Subscriptions {
+					subscriptionID := val
+					querySubscriptions = append(querySubscriptions, &subscriptionID)
+				}
 				queryConfig.Subscriptions = &defaultSubscriptions
+			} else {
+				for _, val := range defaultSubscriptions {
+					subscriptionID := val
+					querySubscriptions = append(querySubscriptions, &subscriptionID)
+				}
 			}
 
 			requestQueryTop := int32(ResourceGraphQueryOptionsTop)
 			requestQuerySkip := int32(0)
 
 			// Set options
-			RequestOptions := resourcegraph.QueryRequestOptions{
-				ResultFormat: "objectArray",
+			resultFormat := armresourcegraph.ResultFormatObjectArray
+			RequestOptions := armresourcegraph.QueryRequestOptions{
+				ResultFormat: &resultFormat,
 				Top:          &requestQueryTop,
 				Skip:         &requestQuerySkip,
 			}
@@ -105,15 +120,15 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			resultTotalRecords := int32(0)
 			for {
 				// Create the query request
-				Request := resourcegraph.QueryRequest{
-					Subscriptions: queryConfig.Subscriptions,
+				Request := armresourcegraph.QueryRequest{
+					Subscriptions: querySubscriptions,
 					Query:         &queryConfig.Query,
 					Options:       &RequestOptions,
 				}
 
 				prometheusQueryRequests.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Inc()
 
-				var results, queryErr = resourceGraphClient.Resources(ctx, Request)
+				var results, queryErr = resourceGraphClient.Resources(ctx, Request, nil)
 				if results.TotalRecords != nil {
 					resultTotalRecords = int32(*results.TotalRecords)
 				}
