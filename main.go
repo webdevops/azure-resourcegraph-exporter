@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/go-common/azuresdk/armclient"
-	"github.com/webdevops/go-common/prometheus/azuretracing"
+	"github.com/webdevops/go-common/azuresdk/prometheus/tracing"
 	"github.com/webdevops/go-common/prometheus/kusto"
 
 	"github.com/webdevops/azure-resourcegraph-exporter/config"
@@ -175,7 +175,7 @@ func startHttpServer() {
 		}
 	})
 
-	http.Handle("/metrics", azuretracing.RegisterAzureMetricAutoClean(promhttp.Handler()))
+	http.Handle("/metrics", tracing.RegisterAzureMetricAutoClean(promhttp.Handler()))
 
 	http.HandleFunc("/probe", handleProbeRequest)
 

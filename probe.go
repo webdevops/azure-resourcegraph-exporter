@@ -53,7 +53,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create and authorize a ResourceGraph client
-	resourceGraphClient, err := armresourcegraph.NewClient(AzureClient.GetCred(), nil)
+	resourceGraphClient, err := armresourcegraph.NewClient(AzureClient.GetCred(), AzureClient.NewArmClientOptions())
 	if err != nil {
 		probeLogger.Errorln(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
