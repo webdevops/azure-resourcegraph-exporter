@@ -25,7 +25,6 @@ FROM gcr.io/distroless/static as test
 USER 0:0
 WORKDIR /app
 COPY --from=build /go/src/github.com/webdevops/azure-resourcegraph-exporter/azure-resourcegraph-exporter .
-COPY --from=build /go/src/github.com/webdevops/azure-resourcegraph-exporter/templates ./templates
 RUN ["./azure-resourcegraph-exporter", "--help"]
 
 #############################################
