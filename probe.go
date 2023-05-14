@@ -9,9 +9,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/go-common/prometheus/kusto"
 	"github.com/webdevops/go-common/utils/to"
+	"go.uber.org/zap"
 )
 
 const (
@@ -27,7 +27,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	moduleName := params.Get("module")
 	cacheKey := "cache:" + moduleName
 
-	probeLogger := log.WithField("module", moduleName)
+	probeLogger := logger.With(zap.String("module", moduleName))
 
 	cacheTime := 0 * time.Second
 	cacheTimeDurationStr := params.Get("cache")
@@ -44,7 +44,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	defaultSubscriptions := []string{}
-	if subscriptionList, err := AzureClient.ListCachedSubscriptionsWithFilter(ctx, opts.Azure.Subscription...); err == nil {
+	if subscriptionList, err := AzureClient.ListCachedSubscriptionsWithFilter(ctx, Opts.Azure.Subscription...); err == nil {
 		for _, subscription := range subscriptionList {
 			defaultSubscriptions = append(defaultSubscriptions, to.String(subscription.SubscriptionID))
 		}
@@ -88,7 +88,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			}
 			startTime := time.Now()
 
-			contextLogger := probeLogger.WithField("metric", queryConfig.Metric)
+			contextLogger := probeLogger.With(zap.String("metric", queryConfig.Metric))
 			contextLogger.Debug("starting query")
 
 			querySubscriptions := []*string{}
@@ -168,7 +168,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			elapsedTime := time.Since(startTime)
-			contextLogger.WithField("results", resultTotalRecords).Debugf("fetched %v results", resultTotalRecords)
+			contextLogger.With(zap.Int32("results", resultTotalRecords)).Debugf("fetched %v results", resultTotalRecords)
 			prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(elapsedTime.Seconds())
 			prometheusQueryResults.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Set(float64(resultTotalRecords))
 		}
@@ -205,7 +205,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	probeLogger.WithField("duration", time.Since(requestTime).String()).Debug("finished request")
+	probeLogger.With(zap.String("duration", time.Since(requestTime).String())).Debug("finished request")
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)

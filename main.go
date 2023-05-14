@@ -9,14 +9,12 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jessevdk/go-flags"
 	cache "github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 	"github.com/webdevops/go-common/azuresdk/armclient"
 	"github.com/webdevops/go-common/azuresdk/prometheus/tracing"
 	"github.com/webdevops/go-common/prometheus/kusto"
@@ -32,7 +30,7 @@ const (
 
 var (
 	argparser *flags.Parser
-	opts      config.Opts
+	Opts      config.Opts
 
 	Config kusto.Config
 
@@ -52,25 +50,25 @@ func main() {
 	initArgparser()
 	initLogger()
 
-	log.Infof("starting azure-resourcegraph-exporter v%s (%s; %s; by %v)", gitTag, gitCommit, runtime.Version(), Author)
-	log.Info(string(opts.GetJson()))
+	logger.Infof("starting azure-resourcegraph-exporter v%s (%s; %s; by %v)", gitTag, gitCommit, runtime.Version(), Author)
+	logger.Info(string(Opts.GetJson()))
 	initGlobalMetrics()
 
 	metricCache = cache.New(120*time.Second, 60*time.Second)
 
-	log.Infof("loading config")
+	logger.Infof("loading config")
 	readConfig()
 
-	log.Infof("init Azure")
+	logger.Infof("init Azure")
 	initAzureConnection()
 
-	log.Infof("starting http server on %s", opts.Server.Bind)
+	logger.Infof("starting http server on %s", Opts.Server.Bind)
 	startHttpServer()
 }
 
 // init argparser and parse/validate arguments
 func initArgparser() {
-	argparser = flags.NewParser(&opts, flags.Default)
+	argparser = flags.NewParser(&Opts, flags.Default)
 	_, err := argparser.Parse()
 
 	// check if there is an parse error
@@ -86,52 +84,19 @@ func initArgparser() {
 	}
 }
 
-func initLogger() {
-	// verbose level
-	if opts.Logger.Debug {
-		log.SetLevel(log.DebugLevel)
-	}
-
-	// trace level
-	if opts.Logger.Trace {
-		log.SetReportCaller(true)
-		log.SetLevel(log.TraceLevel)
-		log.SetFormatter(&log.TextFormatter{
-			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-				s := strings.Split(f.Function, "/")
-				funcName := s[len(s)-1]
-				return funcName, fmt.Sprintf("%s:%d", f.File, f.Line)
-			},
-		})
-	}
-
-	// json log format
-	if opts.Logger.Json {
-		log.SetReportCaller(true)
-		log.SetFormatter(&log.JSONFormatter{
-			DisableTimestamp: true,
-			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
-				s := strings.Split(f.Function, "/")
-				funcName := s[len(s)-1]
-				return funcName, fmt.Sprintf("%s:%d", f.File, f.Line)
-			},
-		})
-	}
-}
-
 func readConfig() {
-	Config = kusto.NewConfig(opts.Config.Path)
+	Config = kusto.NewConfig(Opts.Config.Path)
 
 	if err := Config.Validate(); err != nil {
-		log.Panic(err)
+		logger.Fatal(err)
 	}
 }
 
 func initAzureConnection() {
 	var err error
-	AzureClient, err = armclient.NewArmClientWithCloudName(*opts.Azure.Environment, log.StandardLogger())
+	AzureClient, err = armclient.NewArmClientWithCloudName(*Opts.Azure.Environment, logger)
 	if err != nil {
-		log.Panic(err.Error())
+		logger.Fatal(err.Error())
 	}
 
 	AzureClient.SetUserAgent(UserAgent + gitTag)
@@ -144,14 +109,14 @@ func startHttpServer() {
 	// healthz
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := fmt.Fprint(w, "Ok"); err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 	})
 
 	// readyz
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := fmt.Fprint(w, "Ok"); err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 	})
 
@@ -179,7 +144,7 @@ func startHttpServer() {
 		}
 
 		if err := tmpl.ExecuteTemplate(w, "query.html", templatePayload); err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 	})
 
@@ -188,10 +153,10 @@ func startHttpServer() {
 	mux.HandleFunc("/probe", handleProbeRequest)
 
 	srv := &http.Server{
-		Addr:         opts.Server.Bind,
+		Addr:         Opts.Server.Bind,
 		Handler:      mux,
-		ReadTimeout:  opts.Server.ReadTimeout,
-		WriteTimeout: opts.Server.WriteTimeout,
+		ReadTimeout:  Opts.Server.ReadTimeout,
+		WriteTimeout: Opts.Server.WriteTimeout,
 	}
-	log.Fatal(srv.ListenAndServe())
+	logger.Fatal(srv.ListenAndServe())
 }
