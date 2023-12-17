@@ -116,13 +116,15 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 				Skip:         &requestQuerySkip,
 			}
 
+			query := queryConfig.Query
+
 			// Run the query and get the results
 			resultTotalRecords := int32(0)
 			for {
 				// Create the query request
 				Request := armresourcegraph.QueryRequest{
 					Subscriptions: querySubscriptions,
-					Query:         &queryConfig.Query,
+					Query:         &query,
 					Options:       &RequestOptions,
 				}
 
