@@ -25,7 +25,7 @@ import (
 const (
 	Author = "webdevops.io"
 
-	UserAgent = "azure-resourcegraph-exporter/"
+	UserAgent = "az-rg-exporter/"
 )
 
 var (
