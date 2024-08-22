@@ -1,8 +1,8 @@
 module github.com/webdevops/azure-resourcegraph-exporter
 
-go 1.22
+go 1.23
 
-toolchain go1.22.0
+toolchain go1.23.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph v0.9.0
