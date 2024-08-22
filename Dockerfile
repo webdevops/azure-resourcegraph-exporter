@@ -4,7 +4,7 @@
 FROM --platform=$BUILDPLATFORM golang:1.23-alpine as build
 
 RUN apk upgrade --no-cache --force \
-    && apk add --update build-base make git
+    && apk add --update build-base git make
 
 WORKDIR /go/src/github.com/webdevops/azure-resourcegraph-exporter
 
