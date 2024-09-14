@@ -132,7 +132,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 				var results, queryErr = resourceGraphClient.Resources(ctx, Request, nil)
 				if results.TotalRecords != nil {
-					resultTotalRecords = int32(*results.TotalRecords)
+					resultTotalRecords = int32(*results.TotalRecords) //nolint:gosec // RequestOptions.Skip is int32
 				}
 
 				if queryErr == nil {
