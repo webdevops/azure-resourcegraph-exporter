@@ -52,6 +52,7 @@ func main() {
 
 	logger.Infof("starting azure-resourcegraph-exporter v%s (%s; %s; by %v)", gitTag, gitCommit, runtime.Version(), Author)
 	logger.Info(string(Opts.GetJson()))
+	initSystem()
 	initGlobalMetrics()
 
 	metricCache = cache.New(120*time.Second, 60*time.Second)
