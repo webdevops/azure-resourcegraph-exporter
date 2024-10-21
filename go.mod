@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/prometheus/client_golang v1.20.3
+	github.com/prometheus/client_golang v1.20.5
 	github.com/webdevops/go-common v0.0.0-20240914143308-98dd8416e15d
 	go.uber.org/zap v1.27.0
 	go.uber.org/zap/exp v0.2.0
