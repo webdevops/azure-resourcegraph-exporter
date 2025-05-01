@@ -146,7 +146,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 						for _, v := range resultList {
 							if resultRow, ok := v.(map[string]interface{}); ok {
-								for metricName, metric := range kusto.BuildPrometheusMetricList(queryConfig.Metric, queryConfig.MetricConfig, resultRow) {
+								for metricName, metric := range kusto.BuildPrometheusMetricList(queryConfig.Metric, *queryConfig.QueryMetric, resultRow) {
 									metricList.Add(metricName, metric...)
 								}
 							}
