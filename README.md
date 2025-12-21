@@ -14,18 +14,20 @@ Usage:
   azure-resourcegraph-exporter [OPTIONS]
 
 Application Options:
-      --log.debug             debug mode [$LOG_DEBUG]
-      --log.devel             development mode [$LOG_DEVEL]
-      --log.json              Switch log output to json format [$LOG_JSON]
-      --azure-environment=    Azure environment name (default: AZUREPUBLICCLOUD) [$AZURE_ENVIRONMENT]
-      --azure-subscription=   Azure subscription ID [$AZURE_SUBSCRIPTION_ID]
-  -c, --config=               Config path [$CONFIG]
-      --server.bind=          Server address (default: :8080) [$SERVER_BIND]
-      --server.timeout.read=  Server read timeout (default: 5s) [$SERVER_TIMEOUT_READ]
-      --server.timeout.write= Server write timeout (default: 10s) [$SERVER_TIMEOUT_WRITE]
+      --log.level=[trace|debug|info|warning|error] Log level (default: info) [$LOG_LEVEL]
+      --log.format=[logfmt|json]                   Log format (default: logfmt) [$LOG_FORMAT]
+      --log.source=[|short|file|full]              Show source for every log message (useful for debugging and bug reports) [$LOG_SOURCE]
+      --log.color=[|auto|yes|no]                   Enable color for logs [$LOG_COLOR]
+      --log.time                                   Show log time [$LOG_TIME]
+      --azure-environment=                         Azure environment name (default: AZUREPUBLICCLOUD) [$AZURE_ENVIRONMENT]
+      --azure-subscription=                        Azure subscription ID [$AZURE_SUBSCRIPTION_ID]
+  -c, --config=                                    Config path [$CONFIG]
+      --server.bind=                               Server address (default: :8080) [$SERVER_BIND]
+      --server.timeout.read=                       Server read timeout (default: 5s) [$SERVER_TIMEOUT_READ]
+      --server.timeout.write=                      Server write timeout (default: 10s) [$SERVER_TIMEOUT_WRITE]
 
 Help Options:
-  -h, --help                  Show this help message
+  -h, --help                                       Show this help message
 ```
 
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/webdevops/go-common/prometheus/kusto"
 	"github.com/webdevops/go-common/utils/to"
-	"go.uber.org/zap"
 )
 
 const (
@@ -27,7 +27,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 	moduleName := params.Get("module")
 	cacheKey := "cache:" + moduleName
 
-	probeLogger := logger.With(zap.String("module", moduleName))
+	probeLogger := logger.With(slog.String("module", moduleName))
 
 	cacheTime := 0 * time.Second
 	cacheTimeDurationStr := params.Get("cache")
@@ -35,7 +35,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 		if v, err := time.ParseDuration(cacheTimeDurationStr); err == nil {
 			cacheTime = v
 		} else {
-			probeLogger.Errorln(err.Error())
+			probeLogger.Error(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -49,13 +49,13 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			defaultSubscriptions = append(defaultSubscriptions, to.String(subscription.SubscriptionID))
 		}
 	} else {
-		probeLogger.Panic(err)
+		probeLogger.Panic(err.Error())
 	}
 
 	// Create and authorize a ResourceGraph client
 	resourceGraphClient, err := armresourcegraph.NewClient(AzureClient.GetCred(), AzureClient.NewArmClientOptions())
 	if err != nil {
-		probeLogger.Errorln(err.Error())
+		probeLogger.Error(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -88,7 +88,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			}
 			startTime := time.Now()
 
-			contextLogger := probeLogger.With(zap.String("metric", queryConfig.Metric))
+			contextLogger := probeLogger.With(slog.String("metric", queryConfig.Metric))
 			contextLogger.Debug("starting query")
 
 			querySubscriptions := []*string{}
@@ -158,7 +158,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 
 					contextLogger.Debug("metrics parsed")
 				} else {
-					contextLogger.Errorln(queryErr.Error())
+					contextLogger.Error(queryErr.Error())
 					http.Error(w, queryErr.Error(), http.StatusBadRequest)
 					return
 				}
@@ -170,7 +170,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			elapsedTime := time.Since(startTime)
-			contextLogger.With(zap.Int32("results", resultTotalRecords)).Debugf("fetched %v results", resultTotalRecords)
+			contextLogger.With(slog.Int("results", int(resultTotalRecords))).Debugf("fetched results")
 			prometheusQueryTime.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Observe(elapsedTime.Seconds())
 			prometheusQueryResults.With(prometheus.Labels{"module": moduleName, "metric": queryConfig.Metric}).Set(float64(resultTotalRecords))
 		}
@@ -207,7 +207,7 @@ func handleProbeRequest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	probeLogger.With(zap.String("duration", time.Since(requestTime).String())).Debug("finished request")
+	probeLogger.With(slog.Duration("duration", time.Since(requestTime))).Debug("finished request")
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
